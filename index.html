@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.1</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.2</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -366,6 +366,7 @@ function draw(t){const w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;con
  for(const p of parts){p.y-=p.v;if(p.y<0){p.y=1;p.x=Math.random()}ctx.fillStyle="rgba(120,230,255,0.5)";ctx.beginPath();ctx.arc(p.x*w,p.y*h,p.r*2,0,7);ctx.fill()}
  const mob=matchMedia("(max-width:760px),(orientation:portrait) and (max-width:900px)").matches;const m18=mob&&document.body.classList.contains("m18"),bc=document.body.classList.contains("bandc"),sat=m18?(parseFloat(getComputedStyle(document.body).getPropertyValue("--sat"))||0):0;
  let cx=w/2,cy=mob?h*.215:h*.40,R=mob?Math.min(w*.105,h*.05):Math.min(w,h)*.06;
+ if(!mob&&!m18){const hb=document.querySelector(".bar");if(hb){const k=h/innerHeight;cy=Math.max(cy,hb.getBoundingClientRect().bottom*k+R*4.3)}}
  if(m18){if(bc){cy=(sat+20)*2;R=3.6*2}else{cy=(sat+40+30)*2;R=8.6*2}}lvl+=(speaking-lvl)*.06;
  if(lvl>.01){const f=.85+.15*Math.sin(t/70),b=ctx.createRadialGradient(cx,cy,R*.5,cx,cy,R*3.2);b.addColorStop(0,`rgba(120,240,255,${.45*lvl*f})`);b.addColorStop(.4,`rgba(34,229,255,${.18*lvl*f})`);b.addColorStop(1,"rgba(34,229,255,0)");ctx.fillStyle=b;ctx.beginPath();ctx.arc(cx,cy,R*3.2,0,7);ctx.fill()}
  const beat=Math.pow(.5+.5*Math.sin(t/190),2),br=1+.06*Math.sin(t/900)+lvl*(.06+.22*beat);
