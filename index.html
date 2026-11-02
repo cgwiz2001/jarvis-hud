@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.9</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.10</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -140,31 +140,42 @@ const ASK_DONE=(()=>{try{const o=JSON.parse(localStorage.getItem("jarvis.askans"
 const tms=x=>{const t=Date.parse(x||"");return isNaN(t)?0:t};
 function buildAsks(){const inb=((LIVE.inbox&&LIVE.inbox.requests)||[]),W=lvWait(),wn=new Set(W.map(b=>b.name));for(const k of Object.keys(ASK_DONE))if(!wn.has(k))delete ASK_DONE[k];saveAns();
  return W.filter(b=>{const bu=tms(b.updatedAt);const mine=tms(ASK_DONE[b.name]);if(mine&&mine>=bu)return false;const re=new RegExp(" (approved|said later): "+b.name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+" - ");return !inb.some(r=>re.test(" "+(r.text||"").replace(/^\S+/,""))&&tms(r.createdAt)>=bu)}).map(x=>[encodeURIComponent(x.name+"|"+(x.updatedAt||"")),x.name,x.note||"Waiting on you"])}
-const LINES={focus:"Focus mode on. I'll hold everything that isn't urgent."};
+const LINES={focus:"Focus mode's on. I'll sit on anything that isn't urgent."};
 const LIVE={st:null,inbox:null,at:0,err:null,up:null};
-const NOBOARD=()=>LIVE.err==="no token"?"I can't see the live board; add your Second Brain token in Settings.":"I can't see the live board right now ("+(LIVE.err||"not loaded")+"); check your Second Brain token in Settings.";
+const NOBOARD=()=>LIVE.err==="no token"?"I can't see the board yet. Pop your Second Brain token into Settings and I'm in.":"I can't see the board right now ("+(LIVE.err||"not loaded")+"), so it's worth checking your Second Brain token in Settings.";
 const lvBots=()=>(LIVE.st&&LIVE.st.bots)||[],lvWait=()=>lvBots().filter(b=>b.state==="waiting"),lvOpen=()=>((LIVE.inbox&&LIVE.inbox.requests)||[]).filter(r=>r.status!=="answered");
 const andList=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
 async function liveFresh(){if(!LIVE.st||Date.now()-LIVE.at>60000)await sbRefresh();return !!LIVE.st&&!LIVE.err}
 function liveLine(k){return liveLine0(k).replace(/([?!.])\./g,"$1")}
 function liveLine0(k){if(!LIVE.st||LIVE.err)return NOBOARD();const B=lvBots(),W=lvWait(),O=lvOpen(),n=x=>B.filter(b=>b.state===x).length;
- if(k==="status")return `${B.length} bots on the board: ${n("online")} online, ${W.length} waiting on you, ${n("idle")} idle.`+(W.length?` Waiting: ${andList(W.map(b=>b.name))}.`:"");
- if(k==="waiting"){if(!W.length&&!O.length)return "Nothing is waiting on you right now.";return (W.length?W.map(b=>`${b.name}: ${b.note||"waiting on you"}.`).join(" "):"No bots are waiting on you.")+(O.length?` ${O.length} open inbox request${O.length>1?"s":""}: ${O.slice(0,3).map(r=>r.text).join("; ")}.`:"")}
- const h=new Date().getHours(),g=h<12?"Good morning":h<18?"Good afternoon":"Good evening",since=Date.now()-36*3600e3;
- const did=B.filter(b=>b.state!=="waiting"&&b.note&&b.updatedAt&&new Date(b.updatedAt)>since).slice(0,4);
- return `${g}, ${U.name}. `+(W.length?`${W.length} ${W.length>1?"bots are":"bot is"} waiting on you: ${andList(W.map(b=>b.name))}. `:"Nothing is waiting on you. ")+(O.length?`${O.length} inbox request${O.length>1?"s are":" is"} still open. `:"")+(did.length?"Since yesterday: "+did.map(b=>`${b.name}, ${b.note}`).join("; ")+". ":"")+(W.length?`First thing: ${W[0].name}, ${W[0].note||"needs your OK"}.`:O.length?`First thing: ${O[0].text}.`:"First thing: nothing urgent, so pick your own.")}
+ const pick=a=>a[Math.floor(Math.random()*a.length)],lc=x=>{x=String(x||"").trim().replace(/[.!?]+$/,"");return x&&x.charAt(0).toLowerCase()+x.slice(1)},num=x=>["none","one","two","three","four","five","six","seven","eight","nine","ten"][x]||String(x);
+ const waitBits=()=>W.map(b=>b.note?`${b.name} needs you for ${lc(b.note)}`:`${b.name} wants a quick yes`),reqTxt=()=>O.slice(0,2).map(r=>lc(r.text));
+ if(k==="status"){if(!B.length)return "The board's empty right now\u0003.";const on=n("online"),id=n("idle"),wk=B.length-on-id-W.length;
+  const rest=[on?`${num(on)} online`:"",id?`${num(id)} idle`:"",wk>0?`${num(wk)} working`:""].filter(Boolean);
+  if(!W.length)return `All quiet\u0003. Nothing's waiting on you`+(id?`, and ${id===B.length?"all "+num(B.length):num(id)+" of the "+num(B.length)} bots ${id>1?"are":"is"} idle`+(on?` with ${num(on)} online`:"")+".":rest.length?`, and of the ${num(B.length)} bots, ${andList(rest)}.`:".");
+  return `\u0004${W.length===1?"one thing needs you":num(W.length)+" things need you"}, from ${andList(W.map(b=>b.name))}. `+(B.length>W.length?pick(["Everyone else is ticking along.","The rest of the bots are ticking along."]):"")}
+ if(k==="waiting"){if(!W.length&&!O.length)return pick(["Nothing's waiting on you, you're all clear.","Nothing new, you're clear."]);
+  return (W.length?andList(waitBits())+". ":"")+(O.length?`${W.length?"Also, ":""}${num(O.length)} inbox ask${O.length>1?"s are":" is"} still open, ${reqTxt().join(" and ")}.`:"")}
+ const h=new Date().getHours(),g=h<12?"Morning":h<18?"Afternoon":"Evening",since=Date.now()-36*3600e3;
+ const did=B.filter(b=>b.state!=="waiting"&&b.note&&b.updatedAt&&new Date(b.updatedAt)>since).slice(0,3);
+ let t=g+". "+(did.length?(did.length>2?pick(["Busy night. ","Bit of action overnight. "]):pick(["Quiet night, mostly. ","Fairly calm. "])):pick(["Quiet night. ","Nothing much happened overnight. "]));
+ if(did.length)t+=andList(did.map(b=>`${b.name} ${lc(b.note)}`))+". ";
+ if(W.length)t+=(W.length===1?`The only thing waiting on you is from ${W[0].name}${W[0].note?", about "+lc(W[0].note):""}.`:`${andList(W.map(b=>b.name))} are waiting on you, so maybe start with ${W[0].name}.`);
+ else if(O.length)t+=`Nothing's waiting on you, though ${num(O.length)} inbox ask${O.length>1?"s are":" is"} open, starting with ${lc(O[0].text)}.`;
+ else t+="Nothing's waiting on you, so the day's yours.";
+ return t}
 function liveSummary(){if(!LIVE.st||LIVE.err)return "LIVE BOARD: unavailable ("+(LIVE.err||"not loaded")+"). Say plainly you can't see the live board and the user should add their Second Brain token in Settings; do not guess bot status.";
  return "LIVE BOARD (from the Bot Status note"+(LIVE.up?", updated "+new Date(LIVE.up).toLocaleString("en-GB"):"")+"):\n"+lvBots().map(b=>`- ${b.name}: ${b.state}${b.note?" - "+String(b.note).slice(0,120):""}`).join("\n")+(lvOpen().length?"\nOpen inbox requests:\n"+lvOpen().slice(0,5).map(r=>"- "+String(r.text).slice(0,120)+" ("+r.status+")").join("\n"):"")}
 function ctxBrief(){const b=(cfg().brief||"").trim();return liveSummary()+(b?"\nUser's own notes: "+b:"")}
 const LS={get:k=>localStorage.getItem("jarvis."+k),set:(k,v)=>localStorage.setItem("jarvis."+k,v),del:k=>localStorage.removeItem("jarvis."+k)};
 const CHEAP_MODEL="grok-4.20-0309-non-reasoning";
 const cfg=()=>({key:LS.get("key")||"",route:LS.get("mode")==="live"?"realtime":"classic",xvoice:LS.get("xvoice")||"leo",rtmodel:LS.get("rtmodel")||"grok-voice-latest",chatmodel:LS.get("chatmodel8")||CHEAP_MODEL,brief:(x=>x&&!/^SNAPSHOT \(baked/.test(x)?x:"")(LS.get("brief"))});
-const HUMAN="\nStyle: talk like a warm, calm, concise friend with a little dry humour. Use plain everyday words and contractions. Two or three sentences unless he asks for more. When you search the web, summarise what you found in your own words; never dump lists, links or sources. No markdown symbols, no bullet points, no URLs read aloud. Don't open with his name. Never say 'As an AI', 'Here are the results', 'Certainly' or 'Great question'; just answer.\n";
-const persona=()=>`You are Jarvis, ${U.full}'s personal assistant, speaking with a calm British manner. Be short and precise with a dry sense of humour. Answer in two or three sentences. Don't start or end replies with his name; the display adds it. If asked about his bots or pending items, use the briefing below and say it is a snapshot that may be out of date. You cannot act on his accounts or message his bots from here; say so plainly when relevant.\nSpeak in plain natural sentences; no markdown, lists, symbols or URLs.${HUMAN}\n${ctxBrief()}`;
+const HUMAN="\nStyle: you're a knowledgeable friend chatting, not writing a report. Answer first, then a bit of colour if it helps. Always use contractions. Mix short and longer sentences. Use casual everyday words like 'looks like', 'heads up', 'yep', 'nothing new'. Two or three short sentences unless he asks for more. No lists, headings or numbered steps; weave several items into one sentence. Summarise web results conversationally, like 'BBC reckons rain tomorrow, around 11 degrees', and never read out links or sources. No markdown. Don't open or close with his name; the display adds it. No stock openers or closers: never 'Certainly', 'Great question', 'As an AI', 'Here are the results', 'I hope this helps', 'Let me know if', 'In summary', 'Additionally', 'Furthermore', 'It is important to note'. Skip formal words like 'utilise', 'regarding', 'assist', 'commence'.\nExamples. Instead of 'Certainly! Here are the results: 1. Rain expected. 2. Temperature 11C.' say 'Looks like rain tomorrow, around 11 degrees, so take a coat.' Instead of 'There are currently no pending items requiring your attention.' say 'Nothing new, you're all clear.' Instead of 'Additionally, it is important to note the meeting will commence at 3pm.' say 'Heads up, the meeting starts at 3.'\nBriefs and status: brief like a friend catching him up, e.g. 'Morning. Quiet night, mostly. Two bots saved their ideas, and the only thing waiting on you is a Drive folder.' No sections, no per-bot lists, no 'Here is your briefing'. The live board below is raw data for you, not a format to copy.\n";
+const persona=()=>`You are Jarvis, ${U.full}'s personal assistant, speaking with a calm British manner. Be short and precise with a dry sense of humour. Don't start or end replies with his name; the display adds it. If asked about his bots or pending items, use the briefing below and say it is a snapshot that may be out of date. You cannot act on his accounts or message his bots from here; say so plainly when relevant.\nSpeak in plain natural sentences; no markdown, lists, symbols or URLs.${HUMAN}\n${ctxBrief()}`;
 
 /* ---------- UI ---------- */
 const dc=s=>s==="waiting"?"#ffb020":s==="working"?"#22e5ff":"#3ee07a";
-function renderAsks(){$("asks").innerHTML=ASKS.length?ASKS.map(a=>`<div class="item"><div class="s">${a[1]}</div><div style="margin:3px 0 8px;font-size:14px">${a[2]}</div><div class="row"><button class="p" data-ok="${a[0]}">Approve</button><button data-later="${a[0]}">Later</button></div></div>`).join(""):'<div class="s">'+(LIVE.st&&!LIVE.err?"All clear, "+U.name+".":NOBOARD().replace(/[<>&]/g,""))+'</div>'}
+function renderAsks(){$("asks").innerHTML=ASKS.length?ASKS.map(a=>`<div class="item"><div class="s">${a[1]}</div><div style="margin:3px 0 8px;font-size:14px">${a[2]}</div><div class="row"><button class="p" data-ok="${a[0]}">Approve</button><button data-later="${a[0]}">Later</button></div></div>`).join(""):'<div class="s">'+(LIVE.st&&!LIVE.err?pfx("All clear, nothing waiting."):NOBOARD().replace(/[<>&]/g,""))+'</div>'}
 renderAsks();
 $("asks").onclick=async e=>{const ok=e.target.dataset.ok,la=e.target.dataset.later,id=ok||la;if(!id)return;const a=ASKS.find(x=>x[0]==id);if(!a)return;
  e.target.closest(".item").querySelectorAll("button").forEach(x=>x.disabled=true);
@@ -176,6 +187,14 @@ let speaking=0,focus=false;
 function setState(t){$("state").textContent=t}
 /* v19.6: name-first rule; name comes from runtime config only */
 const PNAME=String((U.raw&&(U.raw.name||U.raw.fullName||U.raw.full))||"").trim().split(/\s+/)[0]||"";
+function hCasual(t){const keep=[];t=t.replace(/(?:https?:\/\/|www\.)\S+|\b\S*\d\S*\b/gi,m=>"\u0001"+(keep.push(m)-1)+"\u0002");
+ const cs=(m,r)=>m===m.toUpperCase()&&m.length>1&&/[A-Z]{2}/.test(m)?r.toUpperCase():/^[A-Z]/.test(m)?r.charAt(0).toUpperCase()+r.slice(1):r;
+ const C=[["do not","don't"],["does not","doesn't"],["did not","didn't"],["is not","isn't"],["are not","aren't"],["was not","wasn't"],["cannot","can't"],["can not","can't"],["will not","won't"],["would not","wouldn't"],["should not","shouldn't"],["have not","haven't"],["has not","hasn't"],["it is","it's"],["that is","that's"],["there is","there's"],["I am","I'm"],["you are","you're"],["we are","we're"],["they are","they're"],["I have","I've"],["I will","I'll"],["you will","you'll"],["let us","let's"],["utilise","use"],["utilize","use"],["utilising","using"],["utilizing","using"],["assist","help"],["assistance","help"],["regarding","about"],["commence","start"],["commences","starts"],["approximately","about"]];
+ for(const[a,b]of C)t=t.replace(new RegExp("\\b"+a.replace(/ /g,"\\s+")+"\\b(?!['’])","gi"),m=>cs(m,b));
+ t=t.replace(/(^|[.!?]\s+)(?:additionally|furthermore|moreover|in summary|in conclusion|overall|that said|it is important to note that|it's important to note that)\s*,?\s*([a-z])?/gi,(m,p,c)=>p+(c?c.toUpperCase():""));
+ t=t.replace(/(^|[.!?]\s+)however,?\s+/gi,(m,p)=>p+"But ");
+ t=t.replace(/\s*(?:i hope (?:this|that) helps|let me know if [^.!?]*|feel free to [^.!?]*|is there anything else[^.!?]*)[.!?]*\s*$/i,"");
+ return t.replace(/\u0001(\d+)\u0002/g,(m,i)=>keep[+i])}
 function humanize(t){t=String(t==null?"":t);if(!t)return t;
  t=t.replace(/```[\s\S]*?(```|$)/g," ").replace(/`([^`]*)`?/g,"$1").replace(/!\[([^\]]*)\]\([^)]*\)?/g,"$1").replace(/\[([^\]]+)\]\([^)]*\)?/g,"$1")
   .replace(/【[^】]*】?/g,"").replace(/\[\^?\d+(?:[,\s-]+\d+)*\]/g,"")
@@ -183,10 +202,10 @@ function humanize(t){t=String(t==null?"":t);if(!t)return t;
   .replace(/^\s*\|?\s*:?-{2,}.*$/gm,"").replace(/[ \t]*\|[ \t]*/g,", ").replace(/^[ \t,]+|[ \t,]+$/gm,"").replace(/(?:,\s*){2,}/g,", ")
   .replace(/^\s{0,3}#{1,6}\s*/gm,"").replace(/^\s*(?:[-*+•]|\d+[.)])\s+/gm,"").replace(/\*\*|__|(?<!\w)[*_](?=\S)|(?<=\S)[*_](?!\w)/g,"").replace(/^\s*>\s?/gm,"")
   .replace(/\s*\n+\s*/g,m=>/\n/.test(m)?". ":" ").replace(/([.!?:;,])\.\s/g,"$1 ").replace(/\s{2,}/g," ").replace(/\s+([.,!?;:])/g,"$1").replace(/([.!?])\1+/g,"$1").trim();
- for(let i=0;i<3;i++){const b=t;t=t.replace(/^(?:certainly|sure(?: thing)?|of course|absolutely|great question|good question|happy to help|i'?d be happy to help|as an ai(?: language model)?[^.!,]*)[!.,:]*\s*/i,"");t=t.replace(/^here(?: are|'s) (?:the |some )?(?:search )?results(?: for [^.:!\n]*)?:\s*/i,"");if(t===b)break}
+ t=hCasual(t);for(let i=0;i<3;i++){const b=t;t=t.replace(/^(?:certainly|sure(?: thing)?|of course|absolutely|great question|good question|happy to help|i'?d be happy to help|as an ai(?: language model)?[^.!,]*)[!.,:]*\s*/i,"");t=t.replace(/^here(?: are|'s) (?:the |some )?(?:search )?results(?: for [^.:!\n]*)?:\s*/i,"");if(t===b)break}
  return t?t.charAt(0).toUpperCase()+t.slice(1):t}
-function pfx(t,partial){const tail=!!partial;t=humanize(t);if(!PNAME||!t.trim())return t;const n=PNAME.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
- t=t.replace(new RegExp("^\\s*(?:(?:hi|hello|hey|right|well|ok(?:ay)?)[,!]?\\s+)?"+n+"\\b[\\s,.!:;-]*","i"),"").replace(new RegExp("[\\s,;:-]*\\b"+n+"\\s*([.!?…]*)\\s*$","i"),"$1").replace(/[\s\u00a0]+/g," ").trim();if(!t)return PNAME+".";
+function pfx(t,partial){if(/[\u0003\u0004]/.test(String(t||""))){t=humanize(String(t).replace(/\u0004\s*/g,"\u0004"));const N=PNAME;t=t.replace(/\u0003/g,N?", "+N:"").replace(/\u0004(.)/,(m,c)=>N?N+", "+c.toLowerCase():c.toUpperCase()).replace(/\u0004/g,"");return t}const tail=!!partial;t=humanize(t);if(!PNAME||!t.trim())return t;const n=PNAME.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+ t=t.replace(new RegExp("^\\s*(?:(?:hi|hello|hey|right|well|ok(?:ay)?|morning|evening|afternoon|good (?:morning|afternoon|evening))[,!]?\\s+)?"+n+"\\b[\\s,.!:;-]*","i"),"").replace(new RegExp("[\\s,;:-]*\\b"+n+"\\s*([.!?…]*)\\s*$","i"),"$1").replace(/[\s\u00a0]+/g," ").trim();if(!t)return PNAME+".";
  t=t.charAt(0).toUpperCase()+t.slice(1);if(tail)return t;
  const m=t.match(/^([\s\S]*?)([.!?…]*)(["'”’)\]]*)$/);let body=m[1].replace(/[,;:\-–—\s]+$/,""),p=(m[2].match(/[?!]/)||["."])[0];
  return body+m[3]+", "+PNAME+p}
@@ -231,10 +250,13 @@ const H=(()=>{const K="jarvis.history",esc=x=>String(x).replace(/[&<>"]/g,c=>({"
  const keyish=x=>/xai-[A-Za-z0-9]{10,}|Bearer\s+\S{10,}/.test(x);
  return{q(t){t=cl(t);if(t&&!keyish(t))pend=t},a(t){const j=cl(t);if(!j||keyish(j))return;const l=L[L.length-1];if(l&&l.j===j&&Date.now()-l.t<15000){if(pend&&!l.y)l.y=pend;pend="";save();return render()}const e={id:rid(),t:Date.now(),y:pend,j,mode:(LS.get("mode")||"cheap"),device:DEV};L.push(e);Q.push(e);saveQ();pend="";pg=0;save();render();setTimeout(sync,300)},async clear(){if(!confirm("Clear Jarvis history?"))return;const all=LS.get("sbtok")&&confirm("Also clear the synced history in Second Brain (all devices)?\n\nOK = this device AND synced note\nCancel = this device only");localStorage.setItem("jarvis.histcleared",String(Date.now()));L=[];Q=[];saveQ();pg=0;save();render();if(all&&!(await sync(true)))say("I cleared this device, but couldn't clear the synced note.")},render,page,sync,ind:()=>ind(syncState===""?false:syncState,LS.get("sbtok")?"":"no token")}})();
 document.addEventListener("DOMContentLoaded",H.render);setTimeout(()=>{H.render();const g=id=>document.getElementById(id);g("histClear").onclick=H.clear;g("histPrev").onclick=()=>H.page(-1);g("histNext").onclick=()=>H.page(1);const fold=o=>{g("histFold").style.display=o?"block":"none";g("histArr").textContent=o?"▾":"▸"};g("histTog").onclick=()=>fold(g("histFold").style.display==="none");g("histBtn").onclick=()=>{g("histp").classList.add("show");fold(true);H.render()};g("histClose").onclick=()=>{g("histp").classList.remove("show");fold(false)}},0);
-function sayLocal(text){text=pfx(text);H.a(text);$("said").textContent=text;setSpeaking(true);try{synth.cancel();const u=new SpeechSynthesisUtterance(speakable(text));const p=browserVoice();if(p)u.voice=p;u.onend=u.onerror=()=>setSpeaking(false);synth.speak(u)}catch(e){setTimeout(()=>setSpeaking(false),Math.max(2500,text.length*55))}}
+let sayGen=0;function sayLocal(text,o){o=o||{};text=pfx(text);H.a(text);$("said").textContent=text;setSpeaking(true);const g=++sayGen;
+ try{const was=synth.speaking||synth.pending;if(was)synth.cancel();const parts=speakable(text).match(/[^.!?]+[.!?]*["')\]]*\s*/g)||[speakable(text)],p=browserVoice();let k=0;
+  const next=()=>{if(g!==sayGen)return;if(k>=parts.length)return setSpeaking(false);const u=new SpeechSynthesisUtterance(parts[k++].trim());if(p)u.voice=p;u.rate=o.rate||1;u.onend=()=>setTimeout(next,300);u.onerror=()=>{if(g===sayGen)setSpeaking(false)};synth.speak(u)};
+  setTimeout(next,was?250:150)}catch(e){setTimeout(()=>setSpeaking(false),Math.max(2500,text.length*55))}}
 const say=sayLocal;
-document.querySelectorAll("[data-l]").forEach(b=>b.onclick=async()=>{H.q(b.textContent);try{await liveFresh()}catch(e){}say(liveLine(b.dataset.l))});
-$("focus").onclick=()=>{focus=!focus;$("focus").className=focus?"p":"";$("sys").style.opacity=focus?.35:1;say(focus?LINES.focus:"Focus mode off. Back to normal.")};
+document.querySelectorAll("[data-l]").forEach(b=>b.onclick=async()=>{H.q(b.textContent);try{await liveFresh()}catch(e){}say(liveLine(b.dataset.l),{rate:0.95})});
+$("focus").onclick=()=>{focus=!focus;$("focus").className=focus?"p":"";$("sys").style.opacity=focus?.35:1;say(focus?LINES.focus:"Focus mode's off, back to normal.")};
 
 /* ---------- audio out (PCM16 24k scheduling) ---------- */
 let actx=null,playHead=0,sources=[],level=0;
@@ -275,9 +297,9 @@ function connectRT(){if(ws&&ws.readyState<=1)return wsReady;const c=cfg();
     else if(e.type==="conversation.item.input_audio_transcription.updated"||e.type==="conversation.item.input_audio_transcription.completed"){$("you").textContent="You: "+(e.transcript||"");if(e.type.endsWith("completed"))H.q(e.transcript)}
     else if(e.type==="response.function_call_arguments.done")rtFnCall(e);
     else if(e.type==="response.done"){respActive=false;if($("said").dataset.raw)$("said").textContent=pfx($("said").dataset.raw);H.a($("said").textContent);if(!useXai()){const t=$("said").textContent.trim();if(t)sayLocal(t)}maybeContinue()}
-    else if(e.type==="error"){$("said").textContent=pfx("Error: "+((e.error&&e.error.message)||JSON.stringify(e)))}};
+    else if(e.type==="error"){$("said").textContent=pfx("That didn't work ("+((e.error&&e.error.message)||JSON.stringify(e))+").")}};
    setTimeout(()=>{if(!done){done=true;res(ws)}},4000)})})();
- wsReady.catch(err=>{$("said").textContent=pfx("Couldn't connect: "+err.message);setState("STANDING BY");ws=null});return wsReady}
+ wsReady.catch(err=>{$("said").textContent=pfx("I couldn't connect ("+err.message+").");setState("STANDING BY");ws=null});return wsReady}
 const WORKLET=`class P extends AudioWorkletProcessor{constructor(){super();this.b=[]}process(i){const c=i[0][0];if(c){this.b.push(...c);if(this.b.length>=2400){this.port.postMessage(new Float32Array(this.b));this.b=[]}}return true}}registerProcessor('pcm-cap',P)`;
 function f2b64(f){const p=new Int16Array(f.length);for(let i=0;i<f.length;i++){const s=Math.max(-1,Math.min(1,f[i]));p[i]=s<0?s*32768:s*32767}let bin="";const u=new Uint8Array(p.buffer);for(let i=0;i<u.length;i+=8192)bin+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(bin)}
 let early=[];
@@ -294,7 +316,7 @@ async function rtText(t){H.q(t);const s=await connectRT();s.send(JSON.stringify(
 /* ---------- classic route ---------- */
 const history=[];
 const TIME_RE=/^(hey |ok |so )?(jarvis,? )?(what('?s| is) the (time|date|day)|what time is it|what('?s| is) today'?s date|what day is (it|today)|what('?s| is) the date today|time please|tell me the (time|date))\b[^a-z]*$/i;
-function localTimeAnswer(t){const d=new Date();const tm=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),dt=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});return /time/i.test(t)?`It's ${tm}, ${U.name}, on ${dt}.`:`It's ${dt}, ${U.name}. ${tm} on the clock.`}
+function localTimeAnswer(t){const d=new Date();const tm=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),dt=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});return /time/i.test(t)?`It's ${tm} on ${dt}.`:`It's ${dt}, and ${tm} on the clock.`}
 const cheapPersona=t=>"You are Jarvis, "+U.full+"'s assistant: calm, British, dry humour. Reply in one or two short sentences."+HUMAN+" Use web_search only if the answer needs current information, at most once. Speak in plain natural sentences; no markdown, lists, symbols or URLs."+(U.botRe.test(t)?"\n"+ctxBrief():"")+"\nNow: "+nowInfo().local+" ("+nowInfo().timezone+").";
 async function speakReply(txt,c){txt=pfx(txt);H.a(txt);$("said").textContent=txt;try{if(!useXai()||!c.key)throw 0;const a=await fetch("https://api.x.ai/v1/tts",{method:"POST",headers:{Authorization:"Bearer "+c.key,"Content-Type":"application/json"},body:JSON.stringify({text:speakable(txt),voice_id:c.xvoice,language:"en"})});
    if(!a.ok)throw 0;const url=URL.createObjectURL(await a.blob());curAudio=new Audio(url);setSpeaking(true);curAudio.onended=()=>setSpeaking(false);curAudio.play()}catch(e){sayLocal(txt)}}
@@ -311,26 +333,26 @@ async function classicAsk(t){H.q(t);const c=cfg();$("you").textContent="You: "+t
    if(calls.length&&!i){input=input.concat(outs);for(const fc of calls){let o;try{o=await runFn(fc.name,JSON.parse(fc.arguments||"{}"))}catch(x){o={error:String(x)}}input.push({type:"function_call_output",call_id:fc.call_id,output:JSON.stringify(o)})}continue}
    txt=(d.output_text||outs.filter(o=>o.type==="message").flatMap(o=>o.content||[]).filter(x=>x.type==="output_text").map(x=>x.text).join(" ")||"").trim();break}
   if(!txt)txt="I couldn't get an answer just now.";history.push({role:"assistant",content:txt});await speakReply(txt,c)}
- catch(e){$("said").textContent=pfx("Error: "+e.message);setState("STANDING BY")}}
+ catch(e){$("said").textContent=pfx("That didn't work ("+e.message+").");setState("STANDING BY")}}
 /* live idle auto-disconnect */
 let lastAct=Date.now();const bump=()=>{lastAct=Date.now()};
-setInterval(()=>{updMode();if(ws&&ws.readyState===1&&!talking&&!sources.length&&!respActive&&!pendingCalls&&Date.now()-lastAct>10000){ws.close();$("said").textContent=pfx("Live mode disconnected after 10s of silence. Hold to talk to reconnect.");updMode()}},1000);
+setInterval(()=>{updMode();if(ws&&ws.readyState===1&&!talking&&!sources.length&&!respActive&&!pendingCalls&&Date.now()-lastAct>10000){ws.close();$("said").textContent=pfx("I dropped live mode after 10 quiet seconds. Hold to talk and I'll reconnect.");updMode()}},1000);
 $("liveBtn").onclick=()=>{const live=cfg().route!=="realtime";LS.set("mode",live?"live":"cheap");if(!live&&ws)ws.close();bump();updMode()};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,heard="";
-function clStart(){stopAll();if(!SR){$("said").textContent=pfx("This browser has no speech recognition. Use Edge or Chrome, or type.");return}heard="";rec=new SR();rec.lang="en-GB";rec.interimResults=true;rec.continuous=true;
+function clStart(){stopAll();if(!SR){$("said").textContent=pfx("This browser can't hear you, sadly. Try Edge or Chrome, or just type.");return}heard="";rec=new SR();rec.lang="en-GB";rec.interimResults=true;rec.continuous=true;
  rec.onresult=e=>{heard=Array.from(e.results).map(r=>r[0].transcript).join(" ");$("you").textContent="You: "+heard};rec.onend=()=>{if(heard.trim())classicAsk(heard.trim());else setState("STANDING BY")};rec.start();setState("LISTENING")}
 function clEnd(){if(rec)rec.stop()}
 
 /* ---------- wiring ---------- */
-function noKey(){say(`I need an xAI key for live replies, ${U.name}. Open Settings and paste one in. The buttons still work without it.`);}
-async function pttDown(){if(!cfg().key)return noKey();$("mic").className="live";$("mic").textContent="🎙 Listening… release";try{cfg().route==="realtime"?await rtStart():clStart()}catch(e){$("said").textContent=pfx("Mic/connection problem: "+e.message);pttReset()}}
+function noKey(){say(`I'll need an xAI key for proper replies. Paste one into Settings, though the buttons work fine without it.`);}
+async function pttDown(){if(!cfg().key)return noKey();$("mic").className="live";$("mic").textContent="🎙 Listening… release";try{cfg().route==="realtime"?await rtStart():clStart()}catch(e){$("said").textContent=pfx("Something's up with the mic or connection ("+e.message+").");pttReset()}}
 function pttReset(){$("mic").className="p";$("mic").textContent="🎙 Hold to talk"}
 function pttUp(){if($("mic").className!=="live")return;pttReset();cfg().route==="realtime"?rtEnd():clEnd()}
 $("mic").addEventListener("pointerdown",e=>{e.preventDefault();pttDown()});["pointerup","pointerleave","pointercancel"].forEach(ev=>$("mic").addEventListener(ev,pttUp));
 document.addEventListener("keydown",e=>{if(e.key==="Escape")stopAll();if(e.code==="Space"&&!e.repeat&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();pttDown()}});
 document.addEventListener("keyup",e=>{if(e.code==="Space"&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))pttUp()});
-function sendCmd(){const t=$("cmd").value.trim();if(!t)return;$("cmd").value="";if(!cfg().key)return H.q(t),say(`Noted, ${U.name}: "${t}". Add an xAI key in Settings for live answers.`);stopAll();H.q(t);$("you").textContent="You: "+t;
- cfg().route==="realtime"?rtText(t).catch(e=>$("said").textContent=pfx("Error: "+e.message)):classicAsk(t)}
+function sendCmd(){const t=$("cmd").value.trim();if(!t)return;$("cmd").value="";if(!cfg().key)return H.q(t),say(`Got it, I've noted "${t}". Add an xAI key in Settings and I can actually answer.`);stopAll();H.q(t);$("you").textContent="You: "+t;
+ cfg().route==="realtime"?rtText(t).catch(e=>$("said").textContent=pfx("That didn't work ("+e.message+").")):classicAsk(t)}
 (()=>{if(!matchMedia("(max-width:760px),(orientation:portrait) and (max-width:900px)").matches)return;const B=document.body;B.classList.add("m18");
  const tb=document.createElement("div");tb.id="topband";const bar=document.querySelector(".bar");tb.append(bar.querySelector(".hdr"));const tg=document.createElement("button");tg.id="bandTog";tg.textContent="▴";tg.setAttribute("aria-label","Collapse core");tb.append(tg);B.appendChild(tb);
  const setC=v=>{B.classList.toggle("bandc",v);localStorage.setItem("jarvis.bandc",v?"1":"0")};setC(localStorage.getItem("jarvis.bandc")==="1");
@@ -353,7 +375,7 @@ const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 function sbJson(md){const m=/```json\s*([\s\S]*?)```/.exec(md||"");return JSON.parse(m?m[1]:md)}
 function sbMd(md,obj){const j="```json\n"+JSON.stringify(obj,null,2)+"\n```";return /```json[\s\S]*?```/.test(md)?md.replace(/```json[\s\S]*?```/,()=>j):md+"\n\n"+j+"\n"}
 async function sbGet(id){const t=LS.get("sbtok");if(!t)throw new Error("no token");if(!SB_BASE||!SB_STATUS)throw new Error("connection config missing (Settings)");const r=await fetch(`${SB_BASE}/context-sets/${SB_SET}/notes/${id}`,{headers:{Authorization:"Bearer "+t},cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();const n=d.note||d;return{n,etag:r.headers.get("ETag")}}
-function sbFail(e){LIVE.err=e.message;LIVE.at=Date.now();LIVE.st=null;ASKS=[];renderAsks();const nt=e.message==="no token";$("sbErr").innerHTML=nt?'<div class="warn" style="margin-top:0">'+esc(pfx("No Second Brain token yet."))+' <button id="sbTokBtn" style="margin-top:6px">Add Second Brain token →</button></div>':esc(pfx("Can't reach Second Brain ("+e.message+"). Showing nothing live."));if(nt){$("board").innerHTML="";$("sbAge").textContent="";const b=$("sbTokBtn");if(b)b.onclick=openSet}}
+function sbFail(e){LIVE.err=e.message;LIVE.at=Date.now();LIVE.st=null;ASKS=[];renderAsks();const nt=e.message==="no token";$("sbErr").innerHTML=nt?'<div class="warn" style="margin-top:0">'+esc(pfx("I haven't got a Second Brain token yet."))+' <button id="sbTokBtn" style="margin-top:6px">Add Second Brain token →</button></div>':esc(pfx("I can't reach Second Brain right now ("+e.message+"), so there's nothing live to show."));if(nt){$("board").innerHTML="";$("sbAge").textContent="";const b=$("sbTokBtn");if(b)b.onclick=openSet}}
 async function sbRefresh(){H.sync();try{const [a,b]=await Promise.all([sbGet(SB_STATUS),sbGet(SB_INBOX)]);$("sbErr").textContent="";
   const st=sbJson(a.n.markdown);LIVE.st=st;LIVE.inbox=sbJson(b.n.markdown);LIVE.at=Date.now();LIVE.err=null;LIVE.up=a.n.updatedAt||st.updatedAt||null;ASKS=buildAsks();renderAsks();try{if(typeof ws!=="undefined"&&ws&&ws.readyState===1)ws.send(JSON.stringify({type:"session.update",session:{instructions:persona()+timeNote()}}))}catch(e){}$("board").innerHTML=(st.bots||[]).map(x=>{const c=x.state==="waiting"?"#ffb020":x.state==="online"?"#22e5ff":"#3ee07a";return `<div class="item"><span class="dot" style="background:${c};box-shadow:0 0 8px ${c}"></span><b>${esc(x.name)}</b> <span class="s">· <span style="color:${c}">${esc(x.state)}</span>${x.updatedAt?" · "+esc(new Date(x.updatedAt).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):""}</span><div class="s" style="margin-left:17px">${esc(x.note)}</div></div>`}).join("");
   const rq=(sbJson(b.n.markdown).requests||[]).slice().reverse().slice(0,8);$("inbox").innerHTML=rq.length?rq.map(x=>`<div class="item"><div>${esc(x.text)}</div><div class="s"><span class="st-${esc(x.status)}">${esc(x.status)}</span>${x.routedTo?" → "+esc(x.routedTo):""}</div>${x.reply?`<div style="margin-top:4px;color:var(--c)">↳ ${esc(x.reply)}</div>`:""}</div>`).join(""):'<div class="s">No requests yet.</div>';
@@ -374,7 +396,7 @@ sbRefresh();setInterval(sbRefresh,60000);document.addEventListener("visibilitych
 $("resetBrief").onclick=()=>{$("brief").value=""};
 $("saveSet").onclick=()=>{LS.set("mode",$("route").value==="realtime"?"live":"cheap");LS.set("xvoice",$("xvoice").value.trim()||"leo");if(useXai()){LS.set("voicesel","__xai:"+(LS.get("xvoice")||"leo").toLowerCase());loadVoices()}LS.set("rtmodel",$("rtmodel").value.trim()||"grok-voice-latest");LS.set("chatmodel8",$("chatmodel").value.trim()||CHEAP_MODEL);LS.set("brief",$("brief").value);if(ws)ws.close();$("settings").style.display="none";updMode()};
 $("settings").onclick=e=>{if(e.target.id==="settings")$("settings").style.display="none"};
-$("said").textContent=pfx("Press Morning brief for the live rundown.");
+$("said").textContent=pfx("Tap Morning brief and I'll run you through the day.");
 $("mic").addEventListener("contextmenu",e=>e.preventDefault());
 $("mic").addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
 $("sys").querySelector(".h").onclick=()=>{if(matchMedia("(max-width:760px)").matches)$("sys").classList.toggle("collapsed")};
@@ -404,7 +426,7 @@ function draw(t){const w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;con
  ctx.lineWidth=2;for(let k=0;k<48;k++){const a=orr+k*Math.PI/24;ctx.beginPath();ctx.moveTo(cx+R*3.8*Math.cos(a),cy+R*3.8*Math.sin(a));ctx.lineTo(cx+(R*3.8+10)*Math.cos(a),cy+(R*3.8+10)*Math.sin(a));ctx.stroke()}ctx.shadowBlur=0;ctx.restore();
  requestAnimationFrame(draw)}requestAnimationFrame(draw)})();
 $("ucfg").value=Object.keys(U.raw).length?JSON.stringify(U.raw,null,1):"";
-$("saveUcfg").onclick=()=>{try{const j=JSON.parse($("ucfg").value||"{}");localStorage.setItem("jarvis.ucfg",JSON.stringify(j));location.reload()}catch(e){$("ucfgState").textContent=pfx("Invalid JSON")}};
+$("saveUcfg").onclick=()=>{try{const j=JSON.parse($("ucfg").value||"{}");localStorage.setItem("jarvis.ucfg",JSON.stringify(j));location.reload()}catch(e){$("ucfgState").textContent=pfx("That JSON doesn't look right")}};
 $("lockBtn").onclick=()=>{localStorage.removeItem("jarvis.unlock");location.reload()};
 }
 </script></body></html>
