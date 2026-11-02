@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.1</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -121,7 +121,7 @@ function gateOk(){try{const u=JSON.parse(localStorage.getItem(GKEY)||"null");ret
 function unlock(){document.getElementById("gate").remove();if(window.BOOT)BOOT();else addEventListener("DOMContentLoaded",()=>BOOT())}
 (function(){const f=document.getElementById("gateF"),m=document.getElementById("gateMsg");
  if(location.hash.startsWith("#setup=")){try{const j=JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(7)))));localStorage.setItem("jarvis.ucfg",JSON.stringify(j))}catch(e){}history.replaceState(null,"",location.pathname)}
- if(!PIN.hash){m.textContent="No PIN configured yet. HUD stays locked.";f.querySelector("button").disabled=true;document.getElementById("pin").disabled=true;return}
+ if(!PIN.hash)return unlock();
  if(gateOk())return unlock();
  let fails=0;f.onsubmit=async e=>{e.preventDefault();const p=document.getElementById("pin");if(fails>=5){m.textContent="Too many tries. Wait 30s.";return}
   if(await pinHash(p.value)===PIN.hash){localStorage.setItem(GKEY,JSON.stringify({tag:PIN.hash.slice(0,12),exp:Date.now()+G30}));unlock()}else{fails++;p.value="";m.textContent="Wrong PIN.";if(fails>=5)setTimeout(()=>{fails=0;m.textContent=""},30000)}};
