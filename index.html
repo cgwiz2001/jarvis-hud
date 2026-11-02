@@ -346,7 +346,7 @@ async function rtFnCall(e){pendingCalls++;setState("THINKING");let out;try{out=a
 function maybeContinue(){if(!callOutputs||pendingCalls>0||respActive)return;const go=()=>{if(sources.length)return setTimeout(go,150);if(ws&&ws.readyState===1&&callOutputs){callOutputs=false;ws.send(JSON.stringify({type:"response.create"}))}};go()}
 
 /* ---------- realtime route ---------- */
-let rtG=null,rtBuf=[],rtXai=true,rtSent=0,rtPend="",respActive=false,micStream=null,micNode=null,micSrc=null,talking=false;
+let ws=null,wsReady=null,respActive=false,micStream=null,micNode=null,micSrc=null,talking=false;
 async function getToken(key){const r=await fetch("https://api.x.ai/v1/realtime/client_secrets",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({expires_after:{seconds:300}})});
  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||("Token request failed: "+r.status));return d.value||(d.client_secret&&d.client_secret.value)||d.token||d.secret}
 function connectRT(){if(ws&&ws.readyState<=1)return wsReady;const c=cfg();
@@ -356,21 +356,15 @@ function connectRT(){if(ws&&ws.readyState<=1)return wsReady;const c=cfg();
    ws.onmessage=m=>{let e;try{e=JSON.parse(m.data)}catch(x){return}bump();
     if(e.type==="session.created")ws.send(JSON.stringify({type:"session.update",session:{voice:c.xvoice,instructions:persona()+timeNote(),tools:RT_TOOLS,tool_choice:"auto",turn_detection:null,audio:{input:{format:{type:"audio/pcm",rate:24000}},output:{format:{type:"audio/pcm",rate:24000}}}}}));
     else if(e.type==="session.updated"&&!done&&e.session&&e.session.instructions){done=true;setState("STANDING BY");res(ws)}
-    else if(e.type==="response.created"){respActive=true;$("said").dataset.raw="";$("said").textContent="";rtBuf=[];rtSent=0;rtPend="";rtG=null;rtXai=true;
-     if(ttsProv({reply:1})==="gemini"){gAbort();const g=++sayGen;sources.forEach(s=>{try{s.stop()}catch(e){}});sources=[];rtXai=false;
-      rtG=gStream(g,rest=>{if(g===sayGen)speakOut(rest,{},"browser")},()=>{if(g!==sayGen)return;rtXai=true;rtBuf.forEach(playPCM);rtBuf=[]})}}
-    else if(e.type==="response.output_audio.delta"||e.type==="response.audio.delta"){if(rtG&&!rtXai)rtBuf.push(e.delta);else if(rtXai&&(rtG||useXai()))playPCM(e.delta)}
-    else if(e.type==="response.output_audio_transcript.delta"||e.type==="response.audio_transcript.delta"||e.type==="response.output_text.delta"){const d=$("said");d.dataset.raw=(d.dataset.raw||"")+e.delta;d.textContent=pfx(d.dataset.raw,true);if(rtG)rtFeed(false)}
+    else if(e.type==="response.created"){respActive=true;$("said").dataset.raw="";$("said").textContent=""}
+    else if(e.type==="response.output_audio.delta"||e.type==="response.audio.delta"){if(useXai())playPCM(e.delta)}
+    else if(e.type==="response.output_audio_transcript.delta"||e.type==="response.audio_transcript.delta"||e.type==="response.output_text.delta"){const d=$("said");d.dataset.raw=(d.dataset.raw||"")+e.delta;d.textContent=pfx(d.dataset.raw,true)}
     else if(e.type==="conversation.item.input_audio_transcription.updated"||e.type==="conversation.item.input_audio_transcription.completed"){$("you").textContent="You: "+(e.transcript||"");if(e.type.endsWith("completed"))H.q(e.transcript)}
     else if(e.type==="response.function_call_arguments.done")rtFnCall(e);
-    else if(e.type==="response.done"){respActive=false;if($("said").dataset.raw)$("said").textContent=pfx($("said").dataset.raw);H.a($("said").textContent);if(rtG){rtFeed(true);rtG.end();rtG=null}else if(!useXai()){const t=$("said").textContent.trim();if(t)sayLocal(t)}maybeContinue()}
+    else if(e.type==="response.done"){respActive=false;if($("said").dataset.raw)$("said").textContent=pfx($("said").dataset.raw);H.a($("said").textContent);if(!useXai()){const t=$("said").textContent.trim();if(t)sayLocal(t)}maybeContinue()}
     else if(e.type==="error"){$("said").textContent=pfx("That didn't work ("+((e.error&&e.error.message)||JSON.stringify(e))+").")}};
    setTimeout(()=>{if(!done){done=true;res(ws)}},4000)})})();
  wsReady.catch(err=>{$("said").textContent=pfx("I couldn't connect ("+err.message+").");setState("STANDING BY");ws=null});return wsReady}
-function rtFeed(fin){const raw=$("said").dataset.raw||"";let rest=raw.slice(rtSent);
- for(;;){const m=rest.match(/^[\s\S]*?[.!?…]+["')\]]*\s+(?=\S)/);if(!m)break;rtPend+=m[0];rtSent+=m[0].length;rest=rest.slice(m[0].length);
-  if(!rtG._n||rtPend.trim().split(/\s+/).length>=12){rtG.push(speakable(pfx(rtPend,true)));rtG._n=1;rtPend=""}}
- if(fin){rtPend+=rest;rtSent=raw.length;if(rtPend.trim())rtG.push(speakable(pfx(rtPend,true)));rtPend=""}}
 const WORKLET=`class P extends AudioWorkletProcessor{constructor(){super();this.b=[]}process(i){const c=i[0][0];if(c){this.b.push(...c);if(this.b.length>=2400){this.port.postMessage(new Float32Array(this.b));this.b=[]}}return true}}registerProcessor('pcm-cap',P)`;
 function f2b64(f){const p=new Int16Array(f.length);for(let i=0;i<f.length;i++){const s=Math.max(-1,Math.min(1,f[i]));p[i]=s<0?s*32768:s*32767}let bin="";const u=new Uint8Array(p.buffer);for(let i=0;i<u.length;i+=8192)bin+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(bin)}
 let early=[];
