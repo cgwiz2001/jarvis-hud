@@ -174,7 +174,7 @@ $("asks").onclick=async e=>{const ok=e.target.dataset.ok,la=e.target.dataset.lat
  say(ok?`Approved, I've passed that to ${a[1]}.`:`Noted for later, I've told ${a[1]}.`)};
 let speaking=0,focus=false;
 function setState(t){$("state").textContent=t}
-/* v19.6: Peter-first rule; name comes from runtime config only */
+/* v19.6: name-first rule; name comes from runtime config only */
 const PNAME=String((U.raw&&(U.raw.name||U.raw.fullName||U.raw.full))||"").trim().split(/\s+/)[0]||"";
 function humanize(t){t=String(t==null?"":t);if(!t)return t;
  t=t.replace(/```[\s\S]*?(```|$)/g," ").replace(/`([^`]*)`?/g,"$1").replace(/!\[([^\]]*)\]\([^)]*\)?/g,"$1").replace(/\[([^\]]+)\]\([^)]*\)?/g,"$1")
