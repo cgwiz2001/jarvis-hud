@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.4</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.5</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -135,7 +135,11 @@ const U=(()=>{let j={};try{j=JSON.parse(localStorage.getItem("jarvis.ucfg")||"{}
 try{localStorage.removeItem("jarvis.spend")}catch(e){}
 const BUILD=document.getElementById("build").textContent.trim();document.getElementById("ver").textContent=(BUILD.match(/v[\d.]+$/)||[BUILD])[0];
 const $=id=>document.getElementById(id);
-let ASKS=[];const ASK_DONE=new Set(JSON.parse(localStorage.getItem("jarvis.asksdone")||"[]"));
+let ASKS=[];localStorage.removeItem("jarvis.asksdone");/* v19.5: answered asks keyed by bot -> answeredAt; an ask only shows while the bot line says waiting AND its updatedAt is newer than our answer */
+const ASK_DONE=(()=>{try{const o=JSON.parse(localStorage.getItem("jarvis.askans")||"{}");return o&&typeof o==="object"&&!Array.isArray(o)?o:{}}catch(e){return{}}})();const saveAns=()=>localStorage.setItem("jarvis.askans",JSON.stringify(ASK_DONE));
+const tms=x=>{const t=Date.parse(x||"");return isNaN(t)?0:t};
+function buildAsks(){const inb=((LIVE.inbox&&LIVE.inbox.requests)||[]),W=lvWait(),wn=new Set(W.map(b=>b.name));for(const k of Object.keys(ASK_DONE))if(!wn.has(k))delete ASK_DONE[k];saveAns();
+ return W.filter(b=>{const bu=tms(b.updatedAt);const mine=tms(ASK_DONE[b.name]);if(mine&&mine>=bu)return false;const re=new RegExp(" (approved|said later): "+b.name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+" - ");return !inb.some(r=>re.test(" "+(r.text||"").replace(/^\S+/,""))&&tms(r.createdAt)>=bu)}).map(x=>[encodeURIComponent(x.name+"|"+(x.updatedAt||"")),x.name,x.note||"Waiting on you"])}
 const LINES={focus:"Focus mode on. I'll hold everything that isn't urgent."};
 const LIVE={st:null,inbox:null,at:0,err:null,up:null};
 const NOBOARD=()=>LIVE.err==="no token"?"I can't see the live board; add your Second Brain token in Settings.":"I can't see the live board right now ("+(LIVE.err||"not loaded")+"); check your Second Brain token in Settings.";
@@ -165,7 +169,7 @@ $("asks").onclick=async e=>{const ok=e.target.dataset.ok,la=e.target.dataset.lat
  e.target.closest(".item").querySelectorAll("button").forEach(x=>x.disabled=true);
  const sent=await sbAdd((ok?U.name+" approved: ":U.name+" said later: ")+a[1]+" - "+a[2],true);
  if(!sent){e.target.closest(".item")&&e.target.closest(".item").querySelectorAll("button").forEach(x=>x.disabled=false);return say(`That wasn't sent to ${a[1]}; I couldn't reach the inbox. It's still on your list.`)}
- ASKS=ASKS.filter(x=>x[0]!=id);ASK_DONE.add(id);localStorage.setItem("jarvis.asksdone",JSON.stringify([...ASK_DONE].slice(-100)));renderAsks();
+ ASKS=ASKS.filter(x=>x[0]!=id);ASK_DONE[a[1]]=new Date().toISOString();saveAns();renderAsks();
  say(ok?`Approved, I've passed that to ${a[1]}.`:`Noted for later, I've told ${a[1]}.`)};
 let speaking=0,focus=false;
 function setState(t){$("state").textContent=t}
@@ -332,9 +336,9 @@ const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 function sbJson(md){const m=/```json\s*([\s\S]*?)```/.exec(md||"");return JSON.parse(m?m[1]:md)}
 function sbMd(md,obj){const j="```json\n"+JSON.stringify(obj,null,2)+"\n```";return /```json[\s\S]*?```/.test(md)?md.replace(/```json[\s\S]*?```/,()=>j):md+"\n\n"+j+"\n"}
 async function sbGet(id){const t=LS.get("sbtok");if(!t)throw new Error("no token");if(!SB_BASE||!SB_STATUS)throw new Error("connection config missing (Settings)");const r=await fetch(`${SB_BASE}/context-sets/${SB_SET}/notes/${id}`,{headers:{Authorization:"Bearer "+t},cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();const n=d.note||d;return{n,etag:r.headers.get("ETag")}}
-function sbFail(e){LIVE.err=e.message;LIVE.at=Date.now();if(e.message==="no token"){LIVE.st=null;ASKS=[]}renderAsks();const nt=e.message==="no token";$("sbErr").innerHTML=nt?'<div class="warn" style="margin-top:0">No Second Brain token yet. <button id="sbTokBtn" style="margin-top:6px">Add Second Brain token →</button></div>':esc("Can't reach Second Brain ("+e.message+"). Showing nothing live.");if(nt){$("board").innerHTML="";$("sbAge").textContent="";const b=$("sbTokBtn");if(b)b.onclick=openSet}}
+function sbFail(e){LIVE.err=e.message;LIVE.at=Date.now();LIVE.st=null;ASKS=[];renderAsks();const nt=e.message==="no token";$("sbErr").innerHTML=nt?'<div class="warn" style="margin-top:0">No Second Brain token yet. <button id="sbTokBtn" style="margin-top:6px">Add Second Brain token →</button></div>':esc("Can't reach Second Brain ("+e.message+"). Showing nothing live.");if(nt){$("board").innerHTML="";$("sbAge").textContent="";const b=$("sbTokBtn");if(b)b.onclick=openSet}}
 async function sbRefresh(){H.sync();try{const [a,b]=await Promise.all([sbGet(SB_STATUS),sbGet(SB_INBOX)]);$("sbErr").textContent="";
-  const st=sbJson(a.n.markdown);LIVE.st=st;LIVE.inbox=sbJson(b.n.markdown);LIVE.at=Date.now();LIVE.err=null;LIVE.up=a.n.updatedAt||st.updatedAt||null;ASKS=lvWait().map(x=>[encodeURIComponent(x.name+"|"+(x.note||"")),x.name,x.note||"Waiting on you"]).filter(x=>!ASK_DONE.has(x[0]));renderAsks();try{if(typeof ws!=="undefined"&&ws&&ws.readyState===1)ws.send(JSON.stringify({type:"session.update",session:{instructions:persona()+timeNote()}}))}catch(e){}$("board").innerHTML=(st.bots||[]).map(x=>{const c=x.state==="waiting"?"#ffb020":x.state==="online"?"#22e5ff":"#3ee07a";return `<div class="item"><span class="dot" style="background:${c};box-shadow:0 0 8px ${c}"></span><b>${esc(x.name)}</b> <span class="s">· <span style="color:${c}">${esc(x.state)}</span>${x.updatedAt?" · "+esc(new Date(x.updatedAt).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):""}</span><div class="s" style="margin-left:17px">${esc(x.note)}</div></div>`}).join("");
+  const st=sbJson(a.n.markdown);LIVE.st=st;LIVE.inbox=sbJson(b.n.markdown);LIVE.at=Date.now();LIVE.err=null;LIVE.up=a.n.updatedAt||st.updatedAt||null;ASKS=buildAsks();renderAsks();try{if(typeof ws!=="undefined"&&ws&&ws.readyState===1)ws.send(JSON.stringify({type:"session.update",session:{instructions:persona()+timeNote()}}))}catch(e){}$("board").innerHTML=(st.bots||[]).map(x=>{const c=x.state==="waiting"?"#ffb020":x.state==="online"?"#22e5ff":"#3ee07a";return `<div class="item"><span class="dot" style="background:${c};box-shadow:0 0 8px ${c}"></span><b>${esc(x.name)}</b> <span class="s">· <span style="color:${c}">${esc(x.state)}</span>${x.updatedAt?" · "+esc(new Date(x.updatedAt).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):""}</span><div class="s" style="margin-left:17px">${esc(x.note)}</div></div>`}).join("");
   const rq=(sbJson(b.n.markdown).requests||[]).slice().reverse().slice(0,8);$("inbox").innerHTML=rq.length?rq.map(x=>`<div class="item"><div>${esc(x.text)}</div><div class="s"><span class="st-${esc(x.status)}">${esc(x.status)}</span>${x.routedTo?" → "+esc(x.routedTo):""}</div>${x.reply?`<div style="margin-top:4px;color:var(--c)">↳ ${esc(x.reply)}</div>`:""}</div>`).join(""):'<div class="s">No requests yet.</div>';
   const up=a.n.updatedAt||st.updatedAt,f=d=>new Date(d).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});$("sbAge").textContent=(up?"Last updated "+f(up)+" · ":"")+"checked "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}catch(e){sbFail(e)}}
 async function sbAdd(text,quiet){const t=LS.get("sbtok");if(!t){sbFail(new Error("no token"));return false}
@@ -349,7 +353,7 @@ $("reqSend").onclick=()=>{const v=$("reqTxt").value.trim();if(v)sbAdd(v)};$("req
  $("boardClose").onclick=()=>{home.forEach(([el,nx,par])=>par.insertBefore(el,nx&&nx.parentNode===par?nx:null));sh.classList.remove("show");document.body.style.overflow=""}})();
 $("saveSb").onclick=()=>{const k=$("sbTok").value.trim();if(k){LS.set("sbtok",k);$("sbTok").value="";$("sbState").textContent="Token saved in this browser.";sbRefresh()}};
 $("forgetSb").onclick=()=>{LS.del("sbtok");$("sbState").textContent="Token forgotten.";$("board").innerHTML="";$("inbox").innerHTML="";sbFail(new Error("no token"))};
-sbRefresh();setInterval(sbRefresh,60000);
+sbRefresh();setInterval(sbRefresh,60000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)sbRefresh()});addEventListener("pageshow",e=>{if(e.persisted)sbRefresh()});
 $("resetBrief").onclick=()=>{$("brief").value=""};
 $("saveSet").onclick=()=>{LS.set("mode",$("route").value==="realtime"?"live":"cheap");LS.set("xvoice",$("xvoice").value.trim()||"leo");if(useXai()){LS.set("voicesel","__xai:"+(LS.get("xvoice")||"leo").toLowerCase());loadVoices()}LS.set("rtmodel",$("rtmodel").value.trim()||"grok-voice-latest");LS.set("chatmodel8",$("chatmodel").value.trim()||CHEAP_MODEL);LS.set("brief",$("brief").value);if(ws)ws.close();$("settings").style.display="none";updMode()};
 $("settings").onclick=e=>{if(e.target.id==="settings")$("settings").style.display="none"};
