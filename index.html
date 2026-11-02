@@ -415,7 +415,7 @@ sbRefresh();setInterval(sbRefresh,60000);document.addEventListener("visibilitych
 $("resetBrief").onclick=()=>{$("brief").value=""};
 $("saveSet").onclick=()=>{LS.set("mode",$("route").value==="realtime"?"live":"cheap");LS.set("xvoice",$("xvoice").value.trim()||"leo");if(useXai()){LS.set("voicesel","__xai:"+(LS.get("xvoice")||"leo").toLowerCase());loadVoices()}LS.set("rtmodel",$("rtmodel").value.trim()||"grok-voice-latest");LS.set("chatmodel8",$("chatmodel").value.trim()||CHEAP_MODEL);LS.set("brief",$("brief").value);if(ws)ws.close();$("settings").style.display="none";updMode()};
 $("settings").onclick=e=>{if(e.target.id==="settings")$("settings").style.display="none"};
-$("said").textContent=pfx(["Tap Morning brief and I'll run you through the day.","Morning brief's ready when you are."].map(x=>new Date().getHours()<12?x.replace("Evening","Morning"):new Date().getHours()<18?x.replace("Evening","Afternoon"):x)[Math.random()<.5?0:1]);
+$("said").textContent=pfx(["Tap Morning brief and I'll run you through the day.","Tap Morning brief whenever you like."].map(x=>new Date().getHours()<12?x.replace("Evening","Morning"):new Date().getHours()<18?x.replace("Evening","Afternoon"):x)[Math.random()<.5?0:1]);
 $("mic").addEventListener("contextmenu",e=>e.preventDefault());
 $("mic").addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
 $("sys").querySelector(".h").onclick=()=>{if(matchMedia("(max-width:760px)").matches)$("sys").classList.toggle("collapsed")};
