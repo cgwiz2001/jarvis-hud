@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.14</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.15</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -109,8 +109,8 @@ body.m18 .bar.open #micRow{margin-top:8px}}
  <label>Voice provider (all Jarvis speech in Cheap mode)</label>
  <select id="ttsProv" style="width:100%;max-width:100%"><option value="gemini">Gemini Flash-Lite TTS</option><option value="xai">xAI</option><option value="browser">Browser</option></select>
  <div class="row"><input id="gKey" type="password" placeholder="Gemini API key (stored only in this browser)" style="flex:1" autocomplete="off"><button id="forgetG">Forget Gemini key</button></div>
- <div class="row"><div style="flex:1"><label>Gemini voice</label><select id="gVoice" style="width:100%"><option value="Charon">Charon (informative, male)</option><option value="Orus">Orus (firm, male)</option><option value="Algieba">Algieba (smooth, male)</option><option value="Iapetus">Iapetus (clear, male)</option><option value="Umbriel">Umbriel (easy-going, male)</option><option value="Achird">Achird (friendly)</option><option value="Sulafat">Sulafat (warm)</option><option value="Kore">Kore (firm)</option></select></div><div style="flex:2"><label>Gemini style</label><input id="gStyle" style="width:100%"></div></div>
- <div class="s" id="gState">Free-tier Gemini API data may be used by Google to improve its products; paid tier is not.</div>
+ <div class="row"><div style="flex:1"><label>Gemini voice</label><select id="gVoice" style="width:100%"><option value="Charon">Charon (informative, male)</option><option value="Orus">Orus (firm, male)</option><option value="Algieba">Algieba (smooth, male)</option><option value="Iapetus">Iapetus (clear, male)</option><option value="Umbriel">Umbriel (easy-going, male)</option><option value="Achird">Achird (friendly)</option><option value="Sulafat">Sulafat (warm)</option><option value="Kore">Kore (firm)</option></select></div><div style="flex:0 0 auto;align-self:flex-end"><button id="gTest" type="button">▶ Test voice</button></div><div style="flex:2"><label>Gemini style</label><input id="gStyle" style="width:100%"></div></div>
+ <div class="s" id="gTestState"></div><div class="s" id="gState">Free-tier Gemini API data may be used by Google to improve its products; paid tier is not.</div>
  <div class="row"><div style="flex:1"><label>xAI voice</label><input id="xvoice" style="width:100%"></div><div style="flex:1"><label>Realtime model</label><input id="rtmodel" style="width:100%"></div><div style="flex:1"><label>Chat model (classic)</label><input id="chatmodel" style="width:100%"></div></div>
  <label>Briefing snapshot (fed to Jarvis as context; edit freely)</label><textarea id="brief"></textarea>
  <label style="font-size:14px;color:var(--ink)">Private connection config (JSON, stored only in this browser; not in the page source)</label><textarea id="ucfg" placeholder='{"name":"…","full":"…","sbBase":"…","sbSet":"…","sbStatus":"…","sbInbox":"…","sbHist":"…","agent":"Jarvis","bots":["…"]}' style="min-height:70px;font-family:monospace;font-size:12px"></textarea><div class="row"><button id="saveUcfg">Save config &amp; reload</button><button id="lockBtn">🔒 Lock</button><span class="s" id="ucfgState"></span></div>
@@ -280,24 +280,38 @@ const GT={get(){let j={};try{j=JSON.parse(localStorage.getItem("jarvis.tts")||"{
 function ttsPrev(o){return o&&o.reply&&useXai()&&cfg().key?"xai":"browser"}
 function ttsProv(o){const j=GT.get();if(j.prov==="gemini"&&!j.key)return ttsPrev(o);if(j.prov==="xai"&&!cfg().key)return "browser";return j.prov||(j.key?"gemini":ttsPrev(o))}
 function gAbort(){GT.ctl.forEach(c=>{try{c.abort()}catch(e){}});GT.ctl=[]}
-function gNotice(){if(GT.warned)return;GT.warned=true;const n=$("voiceNote");n.textContent="Gemini voice unavailable, using backup voice";n.style.display="inline";setTimeout(()=>{n.style.display="none"},6000)}
+function gNotice(why){const n=$("voiceNote");n.textContent="Gemini voice failed"+(why?" ("+why+")":"")+", using backup voice";n.style.display="inline";clearTimeout(gNotice.t);gNotice.t=setTimeout(()=>{n.style.display="none"},9000)}
+function gClean(m,key){m=String(m||"");if(key)m=m.split(key).join("[key]");return m.replace(/\b(AIza|AQ\.)[\w.-]{8,}/g,"[key]").slice(0,140)}
 function gChunks(t){const p=speakable(t).match(/[^.!?]+[.!?]*["')\]]*\s*/g)||[speakable(t)],out=[];let cur="";
  p.forEach(x=>{x=x.trim();if(!x)return;if(!out.length&&!cur){out.push(x);return}cur=cur?cur+" "+x:x;if(cur.split(/\s+/).length>=18){out.push(cur);cur=""}});if(cur)out.push(cur);return out}
-async function gFetch(text,g){const j=GT.get(),c=new AbortController();GT.ctl.push(c);const to=setTimeout(()=>c.abort(),4000);
- try{for(;;){const r=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",signal:c.signal,headers:{"x-goog-api-key":j.key,"Content-Type":"application/json"},
-   body:JSON.stringify({model:GT.models[GT.mi],input:[{type:"user_input",content:[{type:"text",text,annotations:[{type:"speech_metadata",style:j.style||GT.STYLE}]}]}],response_format:{type:"audio",mime_type:"audio/l16",sample_rate:24000},generation_config:{speech_config:[{voice:j.voice||"Charon"}]}})});
-   if(r.status===404&&GT.mi<GT.models.length-1){GT.mi++;continue}if(!r.ok)throw new Error("tts "+r.status);
-   const d=await r.json(),a=(d.steps||[]).filter(s=>s.type==="model_output").flatMap(s=>s.content||[]).filter(x=>x.type==="audio").pop();if(!a||!a.data)throw new Error("no audio");return a.data}}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function gFetch(text,op){op=op||{};const j=GT.get(),key=op.key||j.key,c=new AbortController();GT.ctl.push(c);let tmo=false;const to=setTimeout(()=>{tmo=true;c.abort()},op.to||8000);
+ try{for(;;){let r;try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",signal:c.signal,headers:{"x-goog-api-key":key,"Content-Type":"application/json"},
+   body:JSON.stringify({model:GT.models[GT.mi],input:[{type:"user_input",content:[{type:"text",text,annotations:[{type:"speech_metadata",style:j.style||GT.STYLE}]}]}],response_format:{type:"audio",mime_type:"audio/l16",sample_rate:24000},generation_config:{speech_config:[{voice:op.voice||j.voice||"Charon"}]}})})}
+   catch(e){throw new Error(tmo?"timed out after "+Math.round((op.to||8000)/1000)+"s":e.name==="AbortError"?"cancelled":"network error, "+gClean(e.message,key))}
+   if(r.status===404&&GT.mi<GT.models.length-1){GT.mi++;continue}
+   if(!r.ok){let m="";try{const d=await r.json();m=(d.error&&(d.error.message||d.error.status))||""}catch(e){}throw new Error("HTTP "+r.status+(m?", "+gClean(m,key):""))}
+   const d=await r.json(),a=(d.steps||[]).filter(s=>s.type==="model_output").flatMap(s=>s.content||[]).filter(x=>x.type==="audio").pop();if(!a||!a.data)throw new Error("no audio in response");return a.data}}
  finally{clearTimeout(to);GT.ctl=GT.ctl.filter(x=>x!==c)}}
-function gPlay(b64,g){return new Promise(res=>{if(g!==sayGen)return res();const a=ac(),bin=atob(b64),n=bin.length>>1,buf=a.createBuffer(1,Math.max(1,n),24000),ch=buf.getChannelData(0);
+/* audio unlock: autoplay policy keeps an AudioContext suspended until a gesture, so resume it and play a silent buffer on the first tap/click/key */
+function unlockAudio(){try{if(actx&&actx.state==="running"&&unlockAudio.done)return;unlockAudio.done=1;const a=ac();if(a.state!=="running")a.resume();const b=a.createBuffer(1,1,24000),s=a.createBufferSource();s.buffer=b;s.connect(a.destination);s.start(0)}catch(e){}}
+["pointerdown","touchend","click","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
+async function gPlay(b64,g){const a=ac();if(a.state!=="running"){try{await Promise.race([a.resume(),sleep(600)])}catch(e){}}
+ if(a.state!=="running")throw new Error("audio blocked by the browser, tap anywhere then try again");
+ return new Promise(res=>{if(g!==sayGen)return res();const bin=atob(b64),n=bin.length>>1,buf=a.createBuffer(1,Math.max(1,n),24000),ch=buf.getChannelData(0);
  for(let i=0;i<n;i++){let v=bin.charCodeAt(2*i)|(bin.charCodeAt(2*i+1)<<8);if(v>32767)v-=65536;ch[i]=v/32768}
  const s=a.createBufferSource();s.buffer=buf;s.connect(a.destination);sources.push(s);s.onended=()=>{sources=sources.filter(x=>x!==s);res()};s.start(a.currentTime+0.02)})}
-async function gSpeak(text,o,g,fb){const parts=gChunks(text);if(!parts.length)return setSpeaking(false);setSpeaking(true);ac();
- let k=0,nextP=gFetch(parts[0],g);await new Promise(r=>setTimeout(r,150));
- for(;k<parts.length;k++){let b64;try{b64=await nextP}catch(e){if(g!==sayGen)return;gNotice();return fb(parts.slice(k).join(" "))}
-  if(g!==sayGen)return;nextP=k+1<parts.length?gFetch(parts[k+1],g):null;if(nextP)nextP.catch(()=>{});
-  await gPlay(b64,g);if(g!==sayGen)return;if(k+1<parts.length)await new Promise(r=>setTimeout(r,300))}
- if(g===sayGen)setSpeaking(false)}
+/* streaming Gemini queue: push text as sentences complete; first chunk 8s timeout, prefetched chunks 10s */
+function gStream(g,fb,first){const parts=[],F=[];let ended=false,wake=null,k=0,failed=false;setSpeaking(true);try{ac()}catch(e){}
+ const fill=()=>{for(let i=F.length;i<parts.length&&i<=k+1;i++){F[i]=gFetch(parts[i],{to:i?10000:8000});F[i].catch(()=>{})}};
+ const poke=()=>{if(!failed)fill();if(wake){const w=wake;wake=null;w()}};
+ (async()=>{await sleep(150);for(;;){if(g!==sayGen)return;if(k>=parts.length){if(ended)break;await new Promise(r=>wake=r);continue}fill();
+   try{const b=await F[k];if(g!==sayGen)return;await gPlay(b,g)}catch(e){if(g!==sayGen)return;failed=true;gNotice(e.message);
+    if(k===0&&first)return first();while(!ended){await new Promise(r=>wake=r);if(g!==sayGen)return}return fb(parts.slice(k).join(" "))}
+   if(g!==sayGen)return;k++;fill();if(k<parts.length)await sleep(300)}
+  if(g===sayGen)setSpeaking(false)})();
+ return{push(t){t=String(t||"").trim();if(t){parts.push(t);poke()}},end(){ended=true;poke()},get failed(){return failed}}}
+async function gSpeak(text,o,g,fb){const st=gStream(g,fb);gChunks(text).forEach(x=>st.push(x));st.end()}
 let sayGen=0;function sayLocal(text,o){o=o||{};text=pfx(text);H.a(text);$("said").textContent=text;return speakOut(text,o)}
 function speakOut(text,o,prov){o=o||{};gAbort();const g=++sayGen;sources.forEach(s=>{try{s.stop()}catch(e){}});sources=[];if(curAudio){curAudio.pause();curAudio=null}if(prov!=="browser")try{synth&&synth.cancel()}catch(e){}setSpeaking(true);prov=prov||ttsProv(o);
  if(prov==="gemini")return gSpeak(text,o,g,rest=>speakOut(rest,o,ttsPrev(o)));
@@ -332,7 +346,7 @@ async function rtFnCall(e){pendingCalls++;setState("THINKING");let out;try{out=a
 function maybeContinue(){if(!callOutputs||pendingCalls>0||respActive)return;const go=()=>{if(sources.length)return setTimeout(go,150);if(ws&&ws.readyState===1&&callOutputs){callOutputs=false;ws.send(JSON.stringify({type:"response.create"}))}};go()}
 
 /* ---------- realtime route ---------- */
-let ws=null,wsReady=null,respActive=false,micStream=null,micNode=null,micSrc=null,talking=false;
+let rtG=null,rtBuf=[],rtXai=true,rtSent=0,rtPend="",respActive=false,micStream=null,micNode=null,micSrc=null,talking=false;
 async function getToken(key){const r=await fetch("https://api.x.ai/v1/realtime/client_secrets",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({expires_after:{seconds:300}})});
  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||("Token request failed: "+r.status));return d.value||(d.client_secret&&d.client_secret.value)||d.token||d.secret}
 function connectRT(){if(ws&&ws.readyState<=1)return wsReady;const c=cfg();
@@ -342,15 +356,21 @@ function connectRT(){if(ws&&ws.readyState<=1)return wsReady;const c=cfg();
    ws.onmessage=m=>{let e;try{e=JSON.parse(m.data)}catch(x){return}bump();
     if(e.type==="session.created")ws.send(JSON.stringify({type:"session.update",session:{voice:c.xvoice,instructions:persona()+timeNote(),tools:RT_TOOLS,tool_choice:"auto",turn_detection:null,audio:{input:{format:{type:"audio/pcm",rate:24000}},output:{format:{type:"audio/pcm",rate:24000}}}}}));
     else if(e.type==="session.updated"&&!done&&e.session&&e.session.instructions){done=true;setState("STANDING BY");res(ws)}
-    else if(e.type==="response.created"){respActive=true;$("said").dataset.raw="";$("said").textContent=""}
-    else if(e.type==="response.output_audio.delta"||e.type==="response.audio.delta"){if(useXai())playPCM(e.delta)}
-    else if(e.type==="response.output_audio_transcript.delta"||e.type==="response.audio_transcript.delta"||e.type==="response.output_text.delta"){const d=$("said");d.dataset.raw=(d.dataset.raw||"")+e.delta;d.textContent=pfx(d.dataset.raw,true)}
+    else if(e.type==="response.created"){respActive=true;$("said").dataset.raw="";$("said").textContent="";rtBuf=[];rtSent=0;rtPend="";rtG=null;rtXai=true;
+     if(ttsProv({reply:1})==="gemini"){gAbort();const g=++sayGen;sources.forEach(s=>{try{s.stop()}catch(e){}});sources=[];rtXai=false;
+      rtG=gStream(g,rest=>{if(g===sayGen)speakOut(rest,{},"browser")},()=>{if(g!==sayGen)return;rtXai=true;rtBuf.forEach(playPCM);rtBuf=[]})}}
+    else if(e.type==="response.output_audio.delta"||e.type==="response.audio.delta"){if(rtG&&!rtXai)rtBuf.push(e.delta);else if(rtXai&&(rtG||useXai()))playPCM(e.delta)}
+    else if(e.type==="response.output_audio_transcript.delta"||e.type==="response.audio_transcript.delta"||e.type==="response.output_text.delta"){const d=$("said");d.dataset.raw=(d.dataset.raw||"")+e.delta;d.textContent=pfx(d.dataset.raw,true);if(rtG)rtFeed(false)}
     else if(e.type==="conversation.item.input_audio_transcription.updated"||e.type==="conversation.item.input_audio_transcription.completed"){$("you").textContent="You: "+(e.transcript||"");if(e.type.endsWith("completed"))H.q(e.transcript)}
     else if(e.type==="response.function_call_arguments.done")rtFnCall(e);
-    else if(e.type==="response.done"){respActive=false;if($("said").dataset.raw)$("said").textContent=pfx($("said").dataset.raw);H.a($("said").textContent);if(!useXai()){const t=$("said").textContent.trim();if(t)sayLocal(t)}maybeContinue()}
+    else if(e.type==="response.done"){respActive=false;if($("said").dataset.raw)$("said").textContent=pfx($("said").dataset.raw);H.a($("said").textContent);if(rtG){rtFeed(true);rtG.end();rtG=null}else if(!useXai()){const t=$("said").textContent.trim();if(t)sayLocal(t)}maybeContinue()}
     else if(e.type==="error"){$("said").textContent=pfx("That didn't work ("+((e.error&&e.error.message)||JSON.stringify(e))+").")}};
    setTimeout(()=>{if(!done){done=true;res(ws)}},4000)})})();
  wsReady.catch(err=>{$("said").textContent=pfx("I couldn't connect ("+err.message+").");setState("STANDING BY");ws=null});return wsReady}
+function rtFeed(fin){const raw=$("said").dataset.raw||"";let rest=raw.slice(rtSent);
+ for(;;){const m=rest.match(/^[\s\S]*?[.!?…]+["')\]]*\s+(?=\S)/);if(!m)break;rtPend+=m[0];rtSent+=m[0].length;rest=rest.slice(m[0].length);
+  if(!rtG._n||rtPend.trim().split(/\s+/).length>=12){rtG.push(speakable(pfx(rtPend,true)));rtG._n=1;rtPend=""}}
+ if(fin){rtPend+=rest;rtSent=raw.length;if(rtPend.trim())rtG.push(speakable(pfx(rtPend,true)));rtPend=""}}
 const WORKLET=`class P extends AudioWorkletProcessor{constructor(){super();this.b=[]}process(i){const c=i[0][0];if(c){this.b.push(...c);if(this.b.length>=2400){this.port.postMessage(new Float32Array(this.b));this.b=[]}}return true}}registerProcessor('pcm-cap',P)`;
 function f2b64(f){const p=new Int16Array(f.length);for(let i=0;i<f.length;i++){const s=Math.max(-1,Math.min(1,f[i]));p[i]=s<0?s*32768:s*32767}let bin="";const u=new Uint8Array(p.buffer);for(let i=0;i<u.length;i+=8192)bin+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(bin)}
 let early=[];
@@ -447,6 +467,9 @@ $("forgetSb").onclick=()=>{LS.del("sbtok");$("sbState").textContent="Token forgo
 sbRefresh();setInterval(sbRefresh,60000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)sbRefresh()});addEventListener("pageshow",e=>{if(e.persisted)sbRefresh()});
 $("resetBrief").onclick=()=>{$("brief").value=""};
 (()=>{const j=GT.get();$("ttsProv").value=ttsProv({reply:1});$("gVoice").value=j.voice||"Charon";$("gStyle").value=j.style||GT.STYLE;$("gKey").placeholder=j.key?"Gemini key saved (hidden)":"Gemini API key (stored only in this browser)";
+ const gTest=async()=>{unlockAudio();const el=$("gTestState"),v=$("gKey").value.trim()||GT.get().key,vn=$("gVoice").value;if(!v){el.textContent="Add a Gemini key first.";return}
+  stopAll();const g=++sayGen;el.style.color="";el.textContent="Testing "+vn+"…";try{const b=await gFetch("Hi, this is your new voice.",{key:v,voice:vn,to:10000});await gPlay(b,g);el.style.color="#3ee07a";el.textContent="✓ "+vn+" works ("+GT.models[GT.mi]+")."}catch(e){el.style.color="#ff9b9b";el.textContent="✗ "+e.message}};
+ $("gTest").onclick=gTest;$("gVoice").addEventListener("change",gTest);
  $("forgetG").onclick=()=>{const j=GT.get();delete j.key;if(j.prov==="gemini")delete j.prov;GT.set(j);$("gKey").value="";$("gKey").placeholder="Gemini API key (stored only in this browser)";$("ttsProv").value=ttsProv({reply:1})};
  $("gKey").addEventListener("change",()=>{const v=$("gKey").value.trim();if(v){const j=GT.get();j.key=v;GT.set(j);$("gKey").value="";$("gKey").placeholder="Gemini key saved (hidden)";if(!j.prov)$("ttsProv").value="gemini"}})})();
 $("saveSet").onclick=()=>{{const j=GT.get(),v=$("gKey").value.trim();if(v)j.key=v;j.prov=$("ttsProv").value;j.voice=$("gVoice").value;j.style=$("gStyle").value.trim()||GT.STYLE;GT.set(j);$("gKey").value=""}LS.set("mode",$("route").value==="realtime"?"live":"cheap");LS.set("xvoice",$("xvoice").value.trim()||"leo");if(useXai()){LS.set("voicesel","__xai:"+(LS.get("xvoice")||"leo").toLowerCase());loadVoices()}LS.set("rtmodel",$("rtmodel").value.trim()||"grok-voice-latest");LS.set("chatmodel8",$("chatmodel").value.trim()||CHEAP_MODEL);LS.set("brief",$("brief").value);if(ws)ws.close();$("settings").style.display="none";updMode()};
