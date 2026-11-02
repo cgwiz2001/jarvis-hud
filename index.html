@@ -114,7 +114,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 <div id="gate" style="position:fixed;inset:0;z-index:1000;background:#05080c;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#cfe8ff"><form id="gateF" style="text-align:center;padding:24px;max-width:320px;width:100%" autocomplete="off"><div style="letter-spacing:4px;font-size:14px;color:#6fd3ff;margin-bottom:18px">HUD LOCKED</div><input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="current-password" style="width:100%;box-sizing:border-box;font-size:22px;text-align:center;padding:12px;border-radius:10px;border:1px solid #2a4a63;background:#0b131b;color:#fff"><button style="margin-top:12px;width:100%;min-height:48px;border-radius:10px;border:1px solid #2f7fb0;background:#0f2a3d;color:#cfe8ff;font-size:16px">Unlock</button><div id="gateMsg" style="margin-top:12px;font-size:13px;color:#ff9b9b;min-height:18px"></div></form></div>
 <script>
 /* PIN gate: only a salted PBKDF2-SHA256 hash is stored here. Set via tools/set-pin.py */
-const PIN={salt:"",iter:0,hash:""};
+const PIN={salt:"E7iPowbJy3KNEKVfrXCAYA==",iter:600000,hash:"l0EViI5mYPtgD36JMU0EgrerPJn+2CPF3Cs703Z6/Fc="};
 const GKEY="jarvis.unlock",G30=30*864e5;
 async function pinHash(p){const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(p),"PBKDF2",false,["deriveBits"]);const salt=Uint8Array.from(atob(PIN.salt),c=>c.charCodeAt(0));const b=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:PIN.iter},k,256);return btoa(String.fromCharCode(...new Uint8Array(b)))}
 function gateOk(){try{const u=JSON.parse(localStorage.getItem(GKEY)||"null");return !!(PIN.hash&&u&&u.tag===PIN.hash.slice(0,12)&&u.exp>Date.now())}catch(e){return false}}
