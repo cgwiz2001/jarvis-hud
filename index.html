@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.5</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.6</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -173,6 +173,9 @@ $("asks").onclick=async e=>{const ok=e.target.dataset.ok,la=e.target.dataset.lat
  say(ok?`Approved, I've passed that to ${a[1]}.`:`Noted for later, I've told ${a[1]}.`)};
 let speaking=0,focus=false;
 function setState(t){$("state").textContent=t}
+/* v19.6: Peter-first rule; name comes from runtime config only */
+const PNAME=String((U.raw&&(U.raw.name||U.raw.fullName||U.raw.full))||"").trim().split(/\s+/)[0]||"";
+function pfx(t){t=String(t==null?"":t);if(!PNAME||!t.trim())return t;const l=t.replace(/^\s+/,"");return l.toLowerCase().startsWith(PNAME.toLowerCase())?t:PNAME+", "+l}
 function setSpeaking(on){speaking=on?1:0;$("stop").className=on?"live":"";setState(on?"SPEAKING":focus?"FOCUS MODE":"STANDING BY")}
 function updMode(){const c=cfg();let ws_=null;try{ws_=ws}catch(e){}const ws=ws_;const kb=document.getElementById("keyBanner");if(kb)kb.style.display=c.key?"none":"inline-block";$("mode").textContent=c.key?(c.route==="realtime"?(ws&&ws.readyState===1?"🔴 LIVE · billing ~$0.08/min":"Live mode · connects on talk"):"Cheap mode · "+(window.SpeechRecognition||window.webkitSpeechRecognition?"browser mic":"no speech recognition here, type instead")):"Offline: no key (baked replies only)";const lb=$("liveBtn");if(lb){lb.textContent=c.route==="realtime"?(ws&&ws.readyState===1?"🔴 Live · billing":"Live mode: on"):"Live mode: off";lb.className=c.route==="realtime"?"live":""}}
 updMode();
@@ -214,7 +217,7 @@ const H=(()=>{const K="jarvis.history",esc=x=>String(x).replace(/[&<>"]/g,c=>({"
  const keyish=x=>/xai-[A-Za-z0-9]{10,}|Bearer\s+\S{10,}/.test(x);
  return{q(t){t=cl(t);if(t&&!keyish(t))pend=t},a(t){const j=cl(t);if(!j||keyish(j))return;const l=L[L.length-1];if(l&&l.j===j&&Date.now()-l.t<15000){if(pend&&!l.y)l.y=pend;pend="";save();return render()}const e={id:rid(),t:Date.now(),y:pend,j,mode:(LS.get("mode")||"cheap"),device:DEV};L.push(e);Q.push(e);saveQ();pend="";pg=0;save();render();setTimeout(sync,300)},async clear(){if(!confirm("Clear Jarvis history?"))return;const all=LS.get("sbtok")&&confirm("Also clear the synced history in Second Brain (all devices)?\n\nOK = this device AND synced note\nCancel = this device only");localStorage.setItem("jarvis.histcleared",String(Date.now()));L=[];Q=[];saveQ();pg=0;save();render();if(all&&!(await sync(true)))say("I cleared this device, but couldn't clear the synced note.")},render,page,sync,ind:()=>ind(syncState===""?false:syncState,LS.get("sbtok")?"":"no token")}})();
 document.addEventListener("DOMContentLoaded",H.render);setTimeout(()=>{H.render();const g=id=>document.getElementById(id);g("histClear").onclick=H.clear;g("histPrev").onclick=()=>H.page(-1);g("histNext").onclick=()=>H.page(1);const fold=o=>{g("histFold").style.display=o?"block":"none";g("histArr").textContent=o?"▾":"▸"};g("histTog").onclick=()=>fold(g("histFold").style.display==="none");g("histBtn").onclick=()=>{g("histp").classList.add("show");fold(true);H.render()};g("histClose").onclick=()=>{g("histp").classList.remove("show");fold(false)}},0);
-function sayLocal(text){H.a(text);$("said").textContent=text;setSpeaking(true);try{synth.cancel();const u=new SpeechSynthesisUtterance(speakable(text));const p=browserVoice();if(p)u.voice=p;u.onend=u.onerror=()=>setSpeaking(false);synth.speak(u)}catch(e){setTimeout(()=>setSpeaking(false),Math.max(2500,text.length*55))}}
+function sayLocal(text){text=pfx(text);H.a(text);$("said").textContent=text;setSpeaking(true);try{synth.cancel();const u=new SpeechSynthesisUtterance(speakable(text));const p=browserVoice();if(p)u.voice=p;u.onend=u.onerror=()=>setSpeaking(false);synth.speak(u)}catch(e){setTimeout(()=>setSpeaking(false),Math.max(2500,text.length*55))}}
 const say=sayLocal;
 document.querySelectorAll("[data-l]").forEach(b=>b.onclick=async()=>{H.q(b.textContent);try{await liveFresh()}catch(e){}say(liveLine(b.dataset.l))});
 $("focus").onclick=()=>{focus=!focus;$("focus").className=focus?"p":"";$("sys").style.opacity=focus?.35:1;say(focus?LINES.focus:"Focus mode off. Back to normal.")};
@@ -252,15 +255,15 @@ function connectRT(){if(ws&&ws.readyState<=1)return wsReady;const c=cfg();
    ws.onmessage=m=>{let e;try{e=JSON.parse(m.data)}catch(x){return}bump();
     if(e.type==="session.created")ws.send(JSON.stringify({type:"session.update",session:{voice:c.xvoice,instructions:persona()+timeNote(),tools:RT_TOOLS,tool_choice:"auto",turn_detection:null,audio:{input:{format:{type:"audio/pcm",rate:24000}},output:{format:{type:"audio/pcm",rate:24000}}}}}));
     else if(e.type==="session.updated"&&!done&&e.session&&e.session.instructions){done=true;setState("STANDING BY");res(ws)}
-    else if(e.type==="response.created"){respActive=true;$("said").textContent=""}
+    else if(e.type==="response.created"){respActive=true;$("said").dataset.raw="";$("said").textContent=""}
     else if(e.type==="response.output_audio.delta"||e.type==="response.audio.delta"){if(useXai())playPCM(e.delta)}
-    else if(e.type==="response.output_audio_transcript.delta"||e.type==="response.audio_transcript.delta"||e.type==="response.output_text.delta")$("said").textContent+=e.delta;
+    else if(e.type==="response.output_audio_transcript.delta"||e.type==="response.audio_transcript.delta"||e.type==="response.output_text.delta"){const d=$("said");d.dataset.raw=(d.dataset.raw||"")+e.delta;d.textContent=pfx(d.dataset.raw)}
     else if(e.type==="conversation.item.input_audio_transcription.updated"||e.type==="conversation.item.input_audio_transcription.completed"){$("you").textContent="You: "+(e.transcript||"");if(e.type.endsWith("completed"))H.q(e.transcript)}
     else if(e.type==="response.function_call_arguments.done")rtFnCall(e);
     else if(e.type==="response.done"){respActive=false;H.a($("said").textContent);if(!useXai()){const t=$("said").textContent.trim();if(t)sayLocal(t)}maybeContinue()}
-    else if(e.type==="error"){$("said").textContent="Error: "+((e.error&&e.error.message)||JSON.stringify(e))}};
+    else if(e.type==="error"){$("said").textContent=pfx("Error: "+((e.error&&e.error.message)||JSON.stringify(e)))}};
    setTimeout(()=>{if(!done){done=true;res(ws)}},4000)})})();
- wsReady.catch(err=>{$("said").textContent="Couldn't connect: "+err.message;setState("STANDING BY");ws=null});return wsReady}
+ wsReady.catch(err=>{$("said").textContent=pfx("Couldn't connect: "+err.message);setState("STANDING BY");ws=null});return wsReady}
 const WORKLET=`class P extends AudioWorkletProcessor{constructor(){super();this.b=[]}process(i){const c=i[0][0];if(c){this.b.push(...c);if(this.b.length>=2400){this.port.postMessage(new Float32Array(this.b));this.b=[]}}return true}}registerProcessor('pcm-cap',P)`;
 function f2b64(f){const p=new Int16Array(f.length);for(let i=0;i<f.length;i++){const s=Math.max(-1,Math.min(1,f[i]));p[i]=s<0?s*32768:s*32767}let bin="";const u=new Uint8Array(p.buffer);for(let i=0;i<u.length;i+=8192)bin+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(bin)}
 let early=[];
@@ -279,7 +282,7 @@ const history=[];
 const TIME_RE=/^(hey |ok |so )?(jarvis,? )?(what('?s| is) the (time|date|day)|what time is it|what('?s| is) today'?s date|what day is (it|today)|what('?s| is) the date today|time please|tell me the (time|date))\b[^a-z]*$/i;
 function localTimeAnswer(t){const d=new Date();const tm=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),dt=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});return /time/i.test(t)?`It's ${tm}, ${U.name}, on ${dt}.`:`It's ${dt}, ${U.name}. ${tm} on the clock.`}
 const cheapPersona=t=>"You are Jarvis, "+U.full+"'s assistant: calm, British, dry humour. Reply in one or two short sentences. Use web_search only if the answer needs current information, at most once. Speak in plain natural sentences; no markdown, lists, symbols or URLs."+(U.botRe.test(t)?"\n"+ctxBrief():"")+"\nNow: "+nowInfo().local+" ("+nowInfo().timezone+").";
-async function speakReply(txt,c){H.a(txt);$("said").textContent=txt;try{if(!useXai()||!c.key)throw 0;const a=await fetch("https://api.x.ai/v1/tts",{method:"POST",headers:{Authorization:"Bearer "+c.key,"Content-Type":"application/json"},body:JSON.stringify({text:speakable(txt),voice_id:c.xvoice,language:"en"})});
+async function speakReply(txt,c){txt=pfx(txt);H.a(txt);$("said").textContent=txt;try{if(!useXai()||!c.key)throw 0;const a=await fetch("https://api.x.ai/v1/tts",{method:"POST",headers:{Authorization:"Bearer "+c.key,"Content-Type":"application/json"},body:JSON.stringify({text:speakable(txt),voice_id:c.xvoice,language:"en"})});
    if(!a.ok)throw 0;const url=URL.createObjectURL(await a.blob());curAudio=new Audio(url);setSpeaking(true);curAudio.onended=()=>setSpeaking(false);curAudio.play()}catch(e){sayLocal(txt)}}
 async function classicAsk(t){H.q(t);const c=cfg();$("you").textContent="You: "+t;
  if(TIME_RE.test(t.trim())){const a=localTimeAnswer(t);history.push({role:"user",content:t},{role:"assistant",content:a});return speakReply(a,c)}
@@ -294,26 +297,26 @@ async function classicAsk(t){H.q(t);const c=cfg();$("you").textContent="You: "+t
    if(calls.length&&!i){input=input.concat(outs);for(const fc of calls){let o;try{o=await runFn(fc.name,JSON.parse(fc.arguments||"{}"))}catch(x){o={error:String(x)}}input.push({type:"function_call_output",call_id:fc.call_id,output:JSON.stringify(o)})}continue}
    txt=(d.output_text||outs.filter(o=>o.type==="message").flatMap(o=>o.content||[]).filter(x=>x.type==="output_text").map(x=>x.text).join(" ")||"").trim();break}
   if(!txt)txt="I couldn't get an answer just now.";history.push({role:"assistant",content:txt});await speakReply(txt,c)}
- catch(e){$("said").textContent="Error: "+e.message;setState("STANDING BY")}}
+ catch(e){$("said").textContent=pfx("Error: "+e.message);setState("STANDING BY")}}
 /* live idle auto-disconnect */
 let lastAct=Date.now();const bump=()=>{lastAct=Date.now()};
-setInterval(()=>{updMode();if(ws&&ws.readyState===1&&!talking&&!sources.length&&!respActive&&!pendingCalls&&Date.now()-lastAct>10000){ws.close();$("said").textContent="Live mode disconnected after 10s of silence. Hold to talk to reconnect.";updMode()}},1000);
+setInterval(()=>{updMode();if(ws&&ws.readyState===1&&!talking&&!sources.length&&!respActive&&!pendingCalls&&Date.now()-lastAct>10000){ws.close();$("said").textContent=pfx("Live mode disconnected after 10s of silence. Hold to talk to reconnect.");updMode()}},1000);
 $("liveBtn").onclick=()=>{const live=cfg().route!=="realtime";LS.set("mode",live?"live":"cheap");if(!live&&ws)ws.close();bump();updMode()};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,heard="";
-function clStart(){stopAll();if(!SR){$("said").textContent="This browser has no speech recognition. Use Edge or Chrome, or type.";return}heard="";rec=new SR();rec.lang="en-GB";rec.interimResults=true;rec.continuous=true;
+function clStart(){stopAll();if(!SR){$("said").textContent=pfx("This browser has no speech recognition. Use Edge or Chrome, or type.");return}heard="";rec=new SR();rec.lang="en-GB";rec.interimResults=true;rec.continuous=true;
  rec.onresult=e=>{heard=Array.from(e.results).map(r=>r[0].transcript).join(" ");$("you").textContent="You: "+heard};rec.onend=()=>{if(heard.trim())classicAsk(heard.trim());else setState("STANDING BY")};rec.start();setState("LISTENING")}
 function clEnd(){if(rec)rec.stop()}
 
 /* ---------- wiring ---------- */
 function noKey(){say(`I need an xAI key for live replies, ${U.name}. Open Settings and paste one in. The buttons still work without it.`);}
-async function pttDown(){if(!cfg().key)return noKey();$("mic").className="live";$("mic").textContent="🎙 Listening… release";try{cfg().route==="realtime"?await rtStart():clStart()}catch(e){$("said").textContent="Mic/connection problem: "+e.message;pttReset()}}
+async function pttDown(){if(!cfg().key)return noKey();$("mic").className="live";$("mic").textContent="🎙 Listening… release";try{cfg().route==="realtime"?await rtStart():clStart()}catch(e){$("said").textContent=pfx("Mic/connection problem: "+e.message);pttReset()}}
 function pttReset(){$("mic").className="p";$("mic").textContent="🎙 Hold to talk"}
 function pttUp(){if($("mic").className!=="live")return;pttReset();cfg().route==="realtime"?rtEnd():clEnd()}
 $("mic").addEventListener("pointerdown",e=>{e.preventDefault();pttDown()});["pointerup","pointerleave","pointercancel"].forEach(ev=>$("mic").addEventListener(ev,pttUp));
 document.addEventListener("keydown",e=>{if(e.key==="Escape")stopAll();if(e.code==="Space"&&!e.repeat&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();pttDown()}});
 document.addEventListener("keyup",e=>{if(e.code==="Space"&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))pttUp()});
 function sendCmd(){const t=$("cmd").value.trim();if(!t)return;$("cmd").value="";if(!cfg().key)return H.q(t),say(`Noted, ${U.name}: "${t}". Add an xAI key in Settings for live answers.`);stopAll();H.q(t);$("you").textContent="You: "+t;
- cfg().route==="realtime"?rtText(t).catch(e=>$("said").textContent="Error: "+e.message):classicAsk(t)}
+ cfg().route==="realtime"?rtText(t).catch(e=>$("said").textContent=pfx("Error: "+e.message)):classicAsk(t)}
 (()=>{if(!matchMedia("(max-width:760px),(orientation:portrait) and (max-width:900px)").matches)return;const B=document.body;B.classList.add("m18");
  const tb=document.createElement("div");tb.id="topband";const bar=document.querySelector(".bar");tb.append(bar.querySelector(".hdr"));const tg=document.createElement("button");tg.id="bandTog";tg.textContent="▴";tg.setAttribute("aria-label","Collapse core");tb.append(tg);B.appendChild(tb);
  const setC=v=>{B.classList.toggle("bandc",v);localStorage.setItem("jarvis.bandc",v?"1":"0")};setC(localStorage.getItem("jarvis.bandc")==="1");
@@ -336,7 +339,7 @@ const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 function sbJson(md){const m=/```json\s*([\s\S]*?)```/.exec(md||"");return JSON.parse(m?m[1]:md)}
 function sbMd(md,obj){const j="```json\n"+JSON.stringify(obj,null,2)+"\n```";return /```json[\s\S]*?```/.test(md)?md.replace(/```json[\s\S]*?```/,()=>j):md+"\n\n"+j+"\n"}
 async function sbGet(id){const t=LS.get("sbtok");if(!t)throw new Error("no token");if(!SB_BASE||!SB_STATUS)throw new Error("connection config missing (Settings)");const r=await fetch(`${SB_BASE}/context-sets/${SB_SET}/notes/${id}`,{headers:{Authorization:"Bearer "+t},cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();const n=d.note||d;return{n,etag:r.headers.get("ETag")}}
-function sbFail(e){LIVE.err=e.message;LIVE.at=Date.now();LIVE.st=null;ASKS=[];renderAsks();const nt=e.message==="no token";$("sbErr").innerHTML=nt?'<div class="warn" style="margin-top:0">No Second Brain token yet. <button id="sbTokBtn" style="margin-top:6px">Add Second Brain token →</button></div>':esc("Can't reach Second Brain ("+e.message+"). Showing nothing live.");if(nt){$("board").innerHTML="";$("sbAge").textContent="";const b=$("sbTokBtn");if(b)b.onclick=openSet}}
+function sbFail(e){LIVE.err=e.message;LIVE.at=Date.now();LIVE.st=null;ASKS=[];renderAsks();const nt=e.message==="no token";$("sbErr").innerHTML=nt?'<div class="warn" style="margin-top:0">'+esc(pfx("No Second Brain token yet."))+' <button id="sbTokBtn" style="margin-top:6px">Add Second Brain token →</button></div>':esc(pfx("Can't reach Second Brain ("+e.message+"). Showing nothing live."));if(nt){$("board").innerHTML="";$("sbAge").textContent="";const b=$("sbTokBtn");if(b)b.onclick=openSet}}
 async function sbRefresh(){H.sync();try{const [a,b]=await Promise.all([sbGet(SB_STATUS),sbGet(SB_INBOX)]);$("sbErr").textContent="";
   const st=sbJson(a.n.markdown);LIVE.st=st;LIVE.inbox=sbJson(b.n.markdown);LIVE.at=Date.now();LIVE.err=null;LIVE.up=a.n.updatedAt||st.updatedAt||null;ASKS=buildAsks();renderAsks();try{if(typeof ws!=="undefined"&&ws&&ws.readyState===1)ws.send(JSON.stringify({type:"session.update",session:{instructions:persona()+timeNote()}}))}catch(e){}$("board").innerHTML=(st.bots||[]).map(x=>{const c=x.state==="waiting"?"#ffb020":x.state==="online"?"#22e5ff":"#3ee07a";return `<div class="item"><span class="dot" style="background:${c};box-shadow:0 0 8px ${c}"></span><b>${esc(x.name)}</b> <span class="s">· <span style="color:${c}">${esc(x.state)}</span>${x.updatedAt?" · "+esc(new Date(x.updatedAt).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):""}</span><div class="s" style="margin-left:17px">${esc(x.note)}</div></div>`}).join("");
   const rq=(sbJson(b.n.markdown).requests||[]).slice().reverse().slice(0,8);$("inbox").innerHTML=rq.length?rq.map(x=>`<div class="item"><div>${esc(x.text)}</div><div class="s"><span class="st-${esc(x.status)}">${esc(x.status)}</span>${x.routedTo?" → "+esc(x.routedTo):""}</div>${x.reply?`<div style="margin-top:4px;color:var(--c)">↳ ${esc(x.reply)}</div>`:""}</div>`).join(""):'<div class="s">No requests yet.</div>';
@@ -357,7 +360,7 @@ sbRefresh();setInterval(sbRefresh,60000);document.addEventListener("visibilitych
 $("resetBrief").onclick=()=>{$("brief").value=""};
 $("saveSet").onclick=()=>{LS.set("mode",$("route").value==="realtime"?"live":"cheap");LS.set("xvoice",$("xvoice").value.trim()||"leo");if(useXai()){LS.set("voicesel","__xai:"+(LS.get("xvoice")||"leo").toLowerCase());loadVoices()}LS.set("rtmodel",$("rtmodel").value.trim()||"grok-voice-latest");LS.set("chatmodel8",$("chatmodel").value.trim()||CHEAP_MODEL);LS.set("brief",$("brief").value);if(ws)ws.close();$("settings").style.display="none";updMode()};
 $("settings").onclick=e=>{if(e.target.id==="settings")$("settings").style.display="none"};
-$("said").textContent="Press Morning brief for the live rundown.";
+$("said").textContent=pfx("Press Morning brief for the live rundown.");
 $("mic").addEventListener("contextmenu",e=>e.preventDefault());
 $("mic").addEventListener("touchstart",e=>e.preventDefault(),{passive:false});
 $("sys").querySelector(".h").onclick=()=>{if(matchMedia("(max-width:760px)").matches)$("sys").classList.toggle("collapsed")};
@@ -387,7 +390,7 @@ function draw(t){const w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;con
  ctx.lineWidth=2;for(let k=0;k<48;k++){const a=orr+k*Math.PI/24;ctx.beginPath();ctx.moveTo(cx+R*3.8*Math.cos(a),cy+R*3.8*Math.sin(a));ctx.lineTo(cx+(R*3.8+10)*Math.cos(a),cy+(R*3.8+10)*Math.sin(a));ctx.stroke()}ctx.shadowBlur=0;ctx.restore();
  requestAnimationFrame(draw)}requestAnimationFrame(draw)})();
 $("ucfg").value=Object.keys(U.raw).length?JSON.stringify(U.raw,null,1):"";
-$("saveUcfg").onclick=()=>{try{const j=JSON.parse($("ucfg").value||"{}");localStorage.setItem("jarvis.ucfg",JSON.stringify(j));location.reload()}catch(e){$("ucfgState").textContent="Invalid JSON"}};
+$("saveUcfg").onclick=()=>{try{const j=JSON.parse($("ucfg").value||"{}");localStorage.setItem("jarvis.ucfg",JSON.stringify(j));location.reload()}catch(e){$("ucfgState").textContent=pfx("Invalid JSON")}};
 $("lockBtn").onclick=()=>{localStorage.removeItem("jarvis.unlock");location.reload()};
 }
 </script></body></html>
