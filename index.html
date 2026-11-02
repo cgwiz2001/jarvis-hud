@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.6</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-02 v19.7</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -159,7 +159,8 @@ function ctxBrief(){const b=(cfg().brief||"").trim();return liveSummary()+(b?"\n
 const LS={get:k=>localStorage.getItem("jarvis."+k),set:(k,v)=>localStorage.setItem("jarvis."+k,v),del:k=>localStorage.removeItem("jarvis."+k)};
 const CHEAP_MODEL="grok-4.20-0309-non-reasoning";
 const cfg=()=>({key:LS.get("key")||"",route:LS.get("mode")==="live"?"realtime":"classic",xvoice:LS.get("xvoice")||"leo",rtmodel:LS.get("rtmodel")||"grok-voice-latest",chatmodel:LS.get("chatmodel8")||CHEAP_MODEL,brief:(x=>x&&!/^SNAPSHOT \(baked/.test(x)?x:"")(LS.get("brief"))});
-const persona=()=>`You are Jarvis, ${U.full}'s personal assistant, speaking with a calm British manner. Be short and precise with a dry sense of humour. Answer in two or three sentences. Address him as ${U.name}. If asked about his bots or pending items, use the briefing below and say it is a snapshot that may be out of date. You cannot act on his accounts or message his bots from here; say so plainly when relevant.\nSpeak in plain natural sentences; no markdown, lists, symbols or URLs.\n\n${ctxBrief()}`;
+const HUMAN="\nStyle: talk like a warm, calm, concise friend with a little dry humour. Use plain everyday words and contractions. Two or three sentences unless he asks for more. When you search the web, summarise what you found in your own words; never dump lists, links or sources. No markdown symbols, no bullet points, no URLs read aloud. Never say 'As an AI', 'Here are the results', 'Certainly' or 'Great question'; just answer.\n";
+const persona=()=>`You are Jarvis, ${U.full}'s personal assistant, speaking with a calm British manner. Be short and precise with a dry sense of humour. Answer in two or three sentences. Address him as ${U.name}. If asked about his bots or pending items, use the briefing below and say it is a snapshot that may be out of date. You cannot act on his accounts or message his bots from here; say so plainly when relevant.\nSpeak in plain natural sentences; no markdown, lists, symbols or URLs.${HUMAN}\n${ctxBrief()}`;
 
 /* ---------- UI ---------- */
 const dc=s=>s==="waiting"?"#ffb020":s==="working"?"#22e5ff":"#3ee07a";
@@ -175,7 +176,16 @@ let speaking=0,focus=false;
 function setState(t){$("state").textContent=t}
 /* v19.6: Peter-first rule; name comes from runtime config only */
 const PNAME=String((U.raw&&(U.raw.name||U.raw.fullName||U.raw.full))||"").trim().split(/\s+/)[0]||"";
-function pfx(t){t=String(t==null?"":t);if(!PNAME||!t.trim())return t;const l=t.replace(/^\s+/,"");return l.toLowerCase().startsWith(PNAME.toLowerCase())?t:PNAME+", "+l}
+function humanize(t){t=String(t==null?"":t);if(!t)return t;
+ t=t.replace(/```[\s\S]*?(```|$)/g," ").replace(/`([^`]*)`?/g,"$1").replace(/!\[([^\]]*)\]\([^)]*\)?/g,"$1").replace(/\[([^\]]+)\]\([^)]*\)?/g,"$1")
+  .replace(/【[^】]*】?/g,"").replace(/\[\^?\d+(?:[,\s-]+\d+)*\]/g,"")
+  .replace(/(?:https?:\/\/|www\.)([^\s/)\]>"]+)[^\s)\]>"]*/gi,(m,d)=>d.replace(/^www\./i,""))
+  .replace(/^\s*\|?\s*:?-{2,}.*$/gm,"").replace(/[ \t]*\|[ \t]*/g,", ").replace(/^[ \t,]+|[ \t,]+$/gm,"").replace(/(?:,\s*){2,}/g,", ")
+  .replace(/^\s{0,3}#{1,6}\s*/gm,"").replace(/^\s*(?:[-*+•]|\d+[.)])\s+/gm,"").replace(/\*\*|__|(?<!\w)[*_](?=\S)|(?<=\S)[*_](?!\w)/g,"").replace(/^\s*>\s?/gm,"")
+  .replace(/\s*\n+\s*/g,m=>/\n/.test(m)?". ":" ").replace(/([.!?:;,])\.\s/g,"$1 ").replace(/\s{2,}/g," ").replace(/\s+([.,!?;:])/g,"$1").replace(/([.!?])\1+/g,"$1").trim();
+ for(let i=0;i<3;i++){const b=t;t=t.replace(/^(?:certainly|sure(?: thing)?|of course|absolutely|great question|good question|happy to help|i'?d be happy to help|here are the (?:search )?results(?: for [^.:!]*)?|as an ai(?: language model)?[^.!,]*)[!.,:]*\s*/i,"");if(t===b)break}
+ return t?t.charAt(0).toUpperCase()+t.slice(1):t}
+function pfx(t){t=humanize(t);if(!PNAME||!t.trim())return t;const l=t.replace(/^\s+/,"");return l.toLowerCase().startsWith(PNAME.toLowerCase())?t:PNAME+", "+l}
 function setSpeaking(on){speaking=on?1:0;$("stop").className=on?"live":"";setState(on?"SPEAKING":focus?"FOCUS MODE":"STANDING BY")}
 function updMode(){const c=cfg();let ws_=null;try{ws_=ws}catch(e){}const ws=ws_;const kb=document.getElementById("keyBanner");if(kb)kb.style.display=c.key?"none":"inline-block";$("mode").textContent=c.key?(c.route==="realtime"?(ws&&ws.readyState===1?"🔴 LIVE · billing ~$0.08/min":"Live mode · connects on talk"):"Cheap mode · "+(window.SpeechRecognition||window.webkitSpeechRecognition?"browser mic":"no speech recognition here, type instead")):"Offline: no key (baked replies only)";const lb=$("liveBtn");if(lb){lb.textContent=c.route==="realtime"?(ws&&ws.readyState===1?"🔴 Live · billing":"Live mode: on"):"Live mode: off";lb.className=c.route==="realtime"?"live":""}}
 updMode();
@@ -281,7 +291,7 @@ async function rtText(t){H.q(t);const s=await connectRT();s.send(JSON.stringify(
 const history=[];
 const TIME_RE=/^(hey |ok |so )?(jarvis,? )?(what('?s| is) the (time|date|day)|what time is it|what('?s| is) today'?s date|what day is (it|today)|what('?s| is) the date today|time please|tell me the (time|date))\b[^a-z]*$/i;
 function localTimeAnswer(t){const d=new Date();const tm=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),dt=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});return /time/i.test(t)?`It's ${tm}, ${U.name}, on ${dt}.`:`It's ${dt}, ${U.name}. ${tm} on the clock.`}
-const cheapPersona=t=>"You are Jarvis, "+U.full+"'s assistant: calm, British, dry humour. Reply in one or two short sentences. Use web_search only if the answer needs current information, at most once. Speak in plain natural sentences; no markdown, lists, symbols or URLs."+(U.botRe.test(t)?"\n"+ctxBrief():"")+"\nNow: "+nowInfo().local+" ("+nowInfo().timezone+").";
+const cheapPersona=t=>"You are Jarvis, "+U.full+"'s assistant: calm, British, dry humour. Reply in one or two short sentences."+HUMAN+" Use web_search only if the answer needs current information, at most once. Speak in plain natural sentences; no markdown, lists, symbols or URLs."+(U.botRe.test(t)?"\n"+ctxBrief():"")+"\nNow: "+nowInfo().local+" ("+nowInfo().timezone+").";
 async function speakReply(txt,c){txt=pfx(txt);H.a(txt);$("said").textContent=txt;try{if(!useXai()||!c.key)throw 0;const a=await fetch("https://api.x.ai/v1/tts",{method:"POST",headers:{Authorization:"Bearer "+c.key,"Content-Type":"application/json"},body:JSON.stringify({text:speakable(txt),voice_id:c.xvoice,language:"en"})});
    if(!a.ok)throw 0;const url=URL.createObjectURL(await a.blob());curAudio=new Audio(url);setSpeaking(true);curAudio.onended=()=>setSpeaking(false);curAudio.play()}catch(e){sayLocal(txt)}}
 async function classicAsk(t){H.q(t);const c=cfg();$("you").textContent="You: "+t;
