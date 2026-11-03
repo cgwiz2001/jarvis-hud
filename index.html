@@ -57,7 +57,7 @@ body{overflow-x:hidden}
 #usageLink{display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border:1px solid rgba(34,229,255,.35);border-radius:10px;color:var(--c);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;background:rgba(34,229,255,.06)}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){
 .wrap{z-index:auto!important}
-body.m18{--band:calc(104px + env(safe-area-inset-top))}body.m18.bandc{--band:calc(40px + env(safe-area-inset-top))}
+body.m18{--band:calc(114px + env(safe-area-inset-top))}body.m18.bandc{--band:calc(40px + env(safe-area-inset-top))}
 body.m18 #bg{z-index:0!important;pointer-events:none}
 body.m18::after{content:none;display:none}
 #topband{position:fixed;left:0;right:0;top:0;height:var(--band);z-index:6;padding:env(safe-area-inset-top) calc(8px + env(safe-area-inset-right)) 0 calc(10px + env(safe-area-inset-left));box-sizing:border-box;cursor:pointer}
@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.21</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.22</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -494,7 +494,7 @@ function draw(t){const w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;con
  const mob=matchMedia("(max-width:760px),(orientation:portrait) and (max-width:900px)").matches;const m18=mob&&document.body.classList.contains("m18"),bc=document.body.classList.contains("bandc"),sat=m18?(parseFloat(getComputedStyle(document.body).getPropertyValue("--sat"))||0):0;
  let cx=w/2,cy=mob?h*.215:h*.40,R=mob?Math.min(w*.105,h*.05):Math.min(w,h)*.06;
  if(!mob&&!m18){const hb=document.querySelector(".bar");if(hb){const k=h/innerHeight;cy=Math.max(cy,hb.getBoundingClientRect().bottom*k+R*4.3)}}
- if(m18){if(bc){cy=(sat+20)*2;R=3.6*2;const vr=document.getElementById("ver"),ur=document.getElementById("usageLink");if(vr&&ur){const k=w/innerWidth,l=vr.getBoundingClientRect().right+6,r=ur.getBoundingClientRect().left-6,ring=R*2.4/k;if(r>l){cx=(l+r)/2*k;if((r-l)/2<ring)R=R*((r-l)/2)/ring}}}else{cy=(sat+40+30)*2;R=8.6*2}}lvl+=(speaking-lvl)*.06;
+ if(m18){if(bc){cy=(sat+20)*2;R=3.6*2*1.13;const vr=document.getElementById("ver"),ur=document.getElementById("usageLink");if(vr&&ur){const k=w/innerWidth,l=vr.getBoundingClientRect().right+6,r=ur.getBoundingClientRect().left-6,ring=R*2.4/k;if(r>l){cx=(l+r)/2*k;if((r-l)/2<ring)R=R*((r-l)/2)/ring}}}else{cy=(sat+40+40)*2;R=8.6*2*1.13}}lvl+=(speaking-lvl)*.06;
  if(lvl>.01){const f=.85+.15*Math.sin(t/70),b=ctx.createRadialGradient(cx,cy,R*.5,cx,cy,R*3.2);b.addColorStop(0,`rgba(120,240,255,${.45*lvl*f})`);b.addColorStop(.4,`rgba(34,229,255,${.18*lvl*f})`);b.addColorStop(1,"rgba(34,229,255,0)");ctx.fillStyle=b;ctx.beginPath();ctx.arc(cx,cy,R*3.2,0,7);ctx.fill()}
  const beat=Math.pow(.5+.5*Math.sin(t/190),2),br=1+.06*Math.sin(t/900)+lvl*(.06+.22*beat);
  const bk=mob?.55:1,brth=.5+.5*Math.sin(t/900);ctx.save();ctx.globalCompositeOperation="lighter";
