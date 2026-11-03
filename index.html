@@ -69,7 +69,16 @@ body.m18 .title{font-size:18px;letter-spacing:7px}body.m18 #said{font-size:15px;
 body.m18 .bar{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
 body.m18 .bar>.row{display:flex;max-height:0;opacity:0;overflow:hidden;visibility:hidden;transition:max-height .28s ease-out,opacity .28s ease-out,margin .28s ease-out,visibility 0s linear .28s}body.m18 .bar.open>.row{max-height:420px;opacity:1;visibility:visible;transition:max-height .28s ease-out,opacity .28s ease-out,margin .28s ease-out,visibility 0s}body.m18 .bar.open>.row:first-of-type{margin-bottom:8px}
 .grab{display:none}body.m18 .grab{display:block;width:100%;height:22px;min-height:0;margin:-6px 0 2px;padding:0;background:none;border:0;cursor:pointer;touch-action:manipulation}body.m18 .grab::before{content:"";display:block;width:44px;height:5px;margin:8px auto;border-radius:3px;background:rgba(34,229,255,.55)}
-body.m18 #sys #board{max-height:600px;overflow:hidden;transition:max-height .28s ease-out,opacity .28s ease-out}body.m18 #sys.collapsed #board{display:block!important;max-height:0;opacity:0}
+body.m18 .grab{height:44px;margin:-10px 0 0}body.m18 .grab::before{margin:19px auto}
+#paneStack{display:flex;flex-direction:column;gap:8px;margin:12px 10px 0}
+body.m18 #paneStack>.pane{display:block!important;position:static!important;margin:0!important;padding:0 12px!important;border-radius:14px!important;order:0!important}
+body.m18 #sbBtn,body.m18 #histBtn,body.m18 #histClose,body.m18 #paneStack .pane>.h,body.m18 #paneStack .pane .pb .h{display:none!important}
+.pgrab{display:flex;flex-direction:column;align-items:stretch;width:100%;min-height:52px;padding:0;margin:0;background:none;border:0;cursor:pointer;touch-action:manipulation;color:var(--c);font-size:12px;letter-spacing:.2em;text-align:left}
+.pgrab::before{content:"";display:block;width:44px;height:5px;margin:8px auto 6px;border-radius:3px;background:rgba(34,229,255,.55)}
+.pgrab span{display:flex;justify-content:space-between;padding:0 2px 10px}.pgrab span::after{content:"▸";letter-spacing:0;transition:transform .28s ease-out}.pane.open .pgrab span::after{transform:rotate(90deg)}
+.pb{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease-out,opacity .28s ease-out;opacity:0}.pane.open .pb{grid-template-rows:1fr;opacity:1}.pb>div{overflow:hidden;min-height:0}.pane.open .pb>div{padding-bottom:12px}
+body.m18 #paneStack #histFold{display:block!important}body.m18 #paneStack #histList{max-height:50dvh;overflow-y:auto}body.m18 #sys.collapsed #board{display:block!important}
+#settings .pgrab{margin-top:-8px}
 #micRow{display:flex;gap:8px;align-items:stretch}#micRow #mic{flex:1 1 auto;width:auto;min-height:56px;order:0}#moreBtn{flex:0 0 56px;min-height:56px;font-size:18px}
 body.m18 .bar.open #micRow{margin-top:8px}}
 #histp .h{display:flex;justify-content:space-between;align-items:center}#histp .h button{min-height:30px;padding:2px 10px;font-size:11px}#histList{max-height:none;font-size:13px;padding-right:4px}
@@ -78,7 +87,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.23</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.24</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -441,12 +450,18 @@ function sendCmd(){const t=$("cmd").value.trim();if(!t)return;$("cmd").value="";
  let drOpen=false;const drSync=()=>{bar.classList.toggle("open",drOpen);mb.textContent=drOpen?"✕":"⌨"};
  mb.onclick=()=>{drOpen=!drOpen;drSync();if(drOpen&&!matchMedia("(pointer:coarse)").matches)setTimeout(()=>$("cmd").focus(),50)};
  const gb=document.createElement("button");gb.className="grab";gb.type="button";gb.setAttribute("aria-label","Expand or collapse panel");gb.onclick=e=>{e.preventDefault();drOpen=!drOpen;drSync()};bar.prepend(gb);
- const sy=document.getElementById("sys");if(sy){const g2=document.createElement("button");g2.className="grab";g2.type="button";g2.setAttribute("aria-label","Expand or collapse panel");g2.onclick=()=>sy.classList.toggle("collapsed");sy.prepend(g2)}
  window.visualViewport&&visualViewport.addEventListener("resize",drSync);addEventListener("resize",drSync);
  window.closeDrawer=()=>{drOpen=false;drSync()};
- document.addEventListener("pointerdown",e=>{const ae=document.activeElement;if(ae&&bar.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;if(drOpen&&!bar.contains(e.target)&&!e.target.closest("#settings,#histp,#boardSheet"))closeDrawer()});
+ document.addEventListener("pointerdown",e=>{const ae=document.activeElement;if(ae&&bar.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;if(drOpen&&!bar.contains(e.target)&&!e.target.closest("#settings,#histp,#boardSheet,#paneStack,.pgrab,.grab"))closeDrawer()});
  bar.querySelectorAll(".row+.row button").forEach(b=>b.addEventListener("click",()=>{if(b.id!=="stop"&&b.id!=="liveBtn")closeDrawer()}));
- const sat=document.createElement("div");sat.style.cssText="position:fixed;top:0;height:env(safe-area-inset-top);width:0";B.appendChild(sat);B.style.setProperty("--sat",sat.getBoundingClientRect().height)})();
+ const sat=document.createElement("div");sat.style.cssText="position:fixed;top:0;height:env(safe-area-inset-top);width:0";B.appendChild(sat);B.style.setProperty("--sat",sat.getBoundingClientRect().height);
+ const PO={};const ps=document.createElement("div");ps.id="paneStack";const mid=document.querySelector(".main .mid");mid.after(ps);
+ const mk=(el,key,title,group)=>{el.classList.add("pane");el.classList.remove("collapsed","show");const g=document.createElement("button");g.type="button";g.className="pgrab";g.setAttribute("aria-label","Expand or collapse "+title);g.innerHTML="<span></span>";g.firstChild.textContent=title;const pb=document.createElement("div");pb.className="pb";const inner=document.createElement("div");while(el.firstChild)inner.appendChild(el.firstChild);pb.appendChild(inner);el.append(g,pb);PO[key]=false;
+  g.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();const o=!PO[key];if(group)for(const k in PO)if(k!==key&&PO[k]&&document.querySelector('[data-pane="'+k+'"]')?.dataset.group===group){PO[k]=false}PO[key]=o;paneSync();if(o&&key==="hist"){$("histBtn").onclick();$("histp").classList.remove("show")}});el.dataset.pane=key;if(group)el.dataset.group=group};
+ const paneSync=()=>document.querySelectorAll("[data-pane]").forEach(p=>{p.classList.toggle("open",!!PO[p.dataset.pane]);p.querySelector(".pgrab").setAttribute("aria-expanded",PO[p.dataset.pane]?"true":"false")});window.paneSync=paneSync;window.PO=PO;
+ const wt=$("asks").closest(".panel");[[$("sys"),"sys","STATUS BOARD · LIVE"],[wt,"wait","WAITING ON YOU"],[$("sbp"),"inbox","INBOX → JARVIS"],[$("histp"),"hist","HISTORY"]].forEach(([el,k,t])=>{ps.appendChild(el);mk(el,k,t,"stack")});
+ const sp=document.querySelector("#settings>.panel");if(sp){mk(sp,"set","SETTINGS",null);const os=$("openSet").onclick;const ob=()=>{PO.set=true;paneSync()};["openSet","keyBtn","keyBanner"].forEach(id=>{const b=$(id);if(b)b.addEventListener("click",ob)})}
+ paneSync();window.visualViewport&&visualViewport.addEventListener("resize",paneSync)})();
 $("send").onclick=()=>{sendCmd();window.closeDrawer&&closeDrawer()};$("cmd").onkeydown=e=>{if(e.key==="Enter"){sendCmd();window.closeDrawer&&closeDrawer()}};
 function openSet(){const c=cfg();$("key").value="";$("keyState").textContent=c.key?"A key is saved (hidden).":"No key saved.";$("route").value=c.route;$("xvoice").value=c.xvoice;$("rtmodel").value=c.rtmodel;$("chatmodel").value=c.chatmodel;$("brief").value=c.brief;$("sbTok").value="";$("sbState").textContent=LS.get("sbtok")?"A token is saved (hidden).":"No token saved.";$("settings").style.display="flex"}
 $("openSet").onclick=openSet;$("keyBtn").onclick=openSet;$("keyBanner").onclick=openSet;
@@ -471,7 +486,7 @@ async function sbAdd(text,quiet){const t=LS.get("sbtok");if(!t){sbFail(new Error
   if(r.status===409||r.status===412)continue;if(!r.ok)throw new Error("HTTP "+r.status);if(!quiet)$("reqTxt").value="";await sbRefresh();return true}catch(e){sbFail(e);return false}}sbFail(new Error("busy, try again"));return false}
 $("reqSend").onclick=()=>{const v=$("reqTxt").value.trim();if(v)sbAdd(v)};$("reqTxt").onkeydown=e=>{if(e.key==="Enter"){e.stopPropagation();$("reqSend").click()}};
 (()=>{const sh=document.createElement("div");sh.id="boardSheet";sh.innerHTML='<div class="h" style="display:flex;justify-content:space-between;align-items:center"><span>STATUS BOARD · LIVE</span><button id="boardClose" aria-label="Close">✕</button></div><div id="boardBody"></div>';document.body.appendChild(sh);
- const sys=$("sys"),side=$("asks").closest(".side"),home=[[sys,sys.nextSibling,sys.parentNode],[side,side.nextSibling,side.parentNode]];
+ const sys=$("sys"),side=$("asks").closest(".side")||$("asks").closest(".panel"),home=[[sys,sys.nextSibling,sys.parentNode],[side,side.nextSibling,side.parentNode]];
  $("sbBtn").onclick=()=>{sys.classList.remove("collapsed");$("boardBody").append(sys,side);sh.classList.add("show");document.body.style.overflow="hidden"};
  $("boardClose").onclick=()=>{home.forEach(([el,nx,par])=>par.insertBefore(el,nx&&nx.parentNode===par?nx:null));sh.classList.remove("show");document.body.style.overflow=""}})();
 $("saveSb").onclick=()=>{const k=$("sbTok").value.trim();if(k){LS.set("sbtok",k);$("sbTok").value="";$("sbState").textContent="Token saved in this browser.";sbRefresh()}};
