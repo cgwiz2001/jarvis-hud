@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.22</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.23</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -436,9 +436,11 @@ function sendCmd(){const t=$("cmd").value.trim();if(!t)return;$("cmd").value="";
  const setC=v=>{B.classList.toggle("bandc",v);localStorage.setItem("jarvis.bandc",v?"1":"0")};setC(localStorage.getItem("jarvis.bandc")==="1");
  tb.addEventListener("click",e=>{if(e.target.closest("button:not(#bandTog),a"))return;setC(!B.classList.contains("bandc"))});
  const mr=document.createElement("div");mr.id="micRow";const mb=document.createElement("button");mb.id="moreBtn";mb.textContent="⌨";mb.title="Type or more controls";mr.append($("mic"),mb);bar.appendChild(mr);
- mb.onclick=()=>{bar.classList.toggle("open");mb.textContent=bar.classList.contains("open")?"✕":"⌨";if(bar.classList.contains("open"))setTimeout(()=>$("cmd").focus(),50)};
- window.closeDrawer=()=>{bar.classList.remove("open");mb.textContent="⌨"};
- document.addEventListener("pointerdown",e=>{if(bar.classList.contains("open")&&!bar.contains(e.target)&&!e.target.closest("#settings,#histp,#boardSheet"))closeDrawer()});
+ let drOpen=false;const drSync=()=>{bar.classList.toggle("open",drOpen);mb.textContent=drOpen?"✕":"⌨"};
+ mb.onclick=()=>{drOpen=!drOpen;drSync();if(drOpen&&!matchMedia("(pointer:coarse)").matches)setTimeout(()=>$("cmd").focus(),50)};
+ window.visualViewport&&visualViewport.addEventListener("resize",drSync);addEventListener("resize",drSync);
+ window.closeDrawer=()=>{drOpen=false;drSync()};
+ document.addEventListener("pointerdown",e=>{const ae=document.activeElement;if(ae&&bar.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;if(drOpen&&!bar.contains(e.target)&&!e.target.closest("#settings,#histp,#boardSheet"))closeDrawer()});
  bar.querySelectorAll(".row+.row button").forEach(b=>b.addEventListener("click",()=>{if(b.id!=="stop"&&b.id!=="liveBtn")closeDrawer()}));
  const sat=document.createElement("div");sat.style.cssText="position:fixed;top:0;height:env(safe-area-inset-top);width:0";B.appendChild(sat);B.style.setProperty("--sat",sat.getBoundingClientRect().height)})();
 $("send").onclick=()=>{sendCmd();window.closeDrawer&&closeDrawer()};$("cmd").onkeydown=e=>{if(e.key==="Enter"){sendCmd();window.closeDrawer&&closeDrawer()}};
