@@ -76,7 +76,7 @@ body.m18 .bar.open #micRow{margin-top:8px}}
 @media (max-width:760px),(orientation:portrait) and (max-width:900px){#histBtn{display:inline-block}#histp{display:none}#histp.show{display:flex;flex-direction:column;position:fixed;inset:0;z-index:15;margin:0;border-radius:0;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}#histp.show #histFold{flex:1;overflow-y:auto}#histClose{display:inline-block}#histp .h button{min-height:40px}}
 </style>
 <meta http-equiv="Cache-Control" content="no-cache"></head><body>
-<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.17</div>
+<canvas id="bg"></canvas><div id="build">build 2026-11-03 v19.18</div>
 <div class="wrap">
  <div class="panel bar">
   <div class="hdr"><div style="display:flex;align-items:center;min-width:0"><span class="t">JARVIS</span><span id="ver"></span></div><span style="display:flex;align-items:center;gap:8px;min-width:0"><a id="usageLink" href="https://console.x.ai" target="_blank" rel="noopener">Usage ↗</a><button id="keyBtn">⚙ Key</button></span></div>
@@ -475,7 +475,7 @@ $("sys").querySelector(".h").onclick=()=>{if(matchMedia("(max-width:760px)").mat
 if(matchMedia("(max-width:760px)").matches)$("sys").classList.add("collapsed");
 
 /* ---------- HUD canvas ---------- */
-(()=>{const c=$("bg"),ctx=c.getContext("2d");let lvl=0;const parts=Array.from({length:70},()=>({x:Math.random(),y:Math.random(),v:.0002+Math.random()*.0006,r:Math.random()*1.6+.3}));
+(()=>{const c=$("bg"),ctx=c.getContext("2d");let lvl=0,wR=0,wS=0,wT=0;const parts=Array.from({length:70},()=>({x:Math.random(),y:Math.random(),v:.0002+Math.random()*.0006,r:Math.random()*1.6+.3}));
 function draw(t){const w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,"#06142e");g.addColorStop(1,"#000");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
  const s=34;ctx.strokeStyle="rgba(34,229,255,0.05)";ctx.lineWidth=1;for(let row=0;row*s*1.5<h+s;row++)for(let col=0;col*s*1.732<w+s;col++){const x=col*s*1.732+(row%2?s*.866:0),y=row*s*1.5;ctx.beginPath();for(let k=0;k<6;k++){const a=Math.PI/3*k+Math.PI/6;k?ctx.lineTo(x+s*Math.cos(a),y+s*Math.sin(a)):ctx.moveTo(x+s*Math.cos(a),y+s*Math.sin(a))}ctx.closePath();ctx.stroke()}
  for(const p of parts){p.y-=p.v;if(p.y<0){p.y=1;p.x=Math.random()}ctx.fillStyle="rgba(120,230,255,0.5)";ctx.beginPath();ctx.arc(p.x*w,p.y*h,p.r*2,0,7);ctx.fill()}
@@ -491,7 +491,8 @@ function draw(t){const w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;con
  ctx.restore();
  const halo=ctx.createRadialGradient(cx,cy,R*.6,cx,cy,R*(3.2+lvl*.8*beat)*br);halo.addColorStop(0,`rgba(0,229,255,${.4+.1*brth+lvl*.3})`);halo.addColorStop(1,"rgba(0,229,255,0)");ctx.fillStyle=halo;ctx.beginPath();ctx.arc(cx,cy,R*(3.2+lvl*.8*beat)*br,0,7);ctx.fill();
  const core=ctx.createRadialGradient(cx,cy,0,cx,cy,R*.75*br);core.addColorStop(0,"#fff");core.addColorStop(.55,"rgba(210,252,255,0.95)");core.addColorStop(1,"rgba(0,229,255,0)");ctx.fillStyle=core;ctx.shadowColor="#bff";ctx.shadowBlur=(30+20*brth+lvl*60*beat)*bk;ctx.beginPath();ctx.arc(cx,cy,R*.75*br,0,7);ctx.fill();ctx.shadowBlur=0;
- ctx.save();if(lvl>.02)ctx.globalCompositeOperation="lighter";const rot=t*.00035;[[0,5,.95,22],[.35,2.5,.5,14],[-.3,1.5,.35,10]].forEach(([ph,lw,al,bl])=>{ctx.strokeStyle=`rgba(0,240,255,${al})`;ctx.lineWidth=lw*2;ctx.shadowColor="#0ff";ctx.shadowBlur=bl*2*bk*(1+lvl*.8*beat);ctx.beginPath();for(let i=0;i<=600;i++){const a=i/600*Math.PI*2,m=.75+.25*Math.sin(t/1300+a*2+ph)+lvl*.15,sh=Math.sin(a*6+ph*.6+Math.sin(t/1700)*.6),pk=Math.sign(sh)*Math.pow(Math.abs(sh),.8+.3*Math.sin(t/1100)),rr=R*(2+.5*pk*m),px=cx+rr*Math.cos(a+rot),py=cy+rr*Math.sin(a+rot);i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath();ctx.stroke()});
+ const stx=($("state")||{}).textContent||"",dt=Math.min(100,t-(wT||t));wT=t;const ke=1-Math.exp(-dt/100);wR+=((/LISTENING/.test(stx)?1:0)-wR)*ke;wS+=(((speaking||/SPEAKING/.test(stx))&&!/LISTENING/.test(stx)?1:0)-wS)*ke;const mx=(p,q,r)=>Math.round(p+(q-p)*r),cr=[0,mx(240,229,wS),255],wc=[mx(cr[0],255,wR),mx(cr[1],45,wR),mx(cr[2],85,wR)].join(",");
+ ctx.save();if(lvl>.02)ctx.globalCompositeOperation="lighter";const rot=t*.00035;[[0,5,.95,22],[.35,2.5,.5,14],[-.3,1.5,.35,10]].forEach(([ph,lw,al,bl])=>{ctx.strokeStyle=`rgba(${wc},${al})`;ctx.lineWidth=lw*2;ctx.shadowColor=`rgb(${wc})`;ctx.shadowBlur=bl*2*bk*(1+lvl*.8*beat);ctx.beginPath();for(let i=0;i<=600;i++){const a=i/600*Math.PI*2,m=.75+.25*Math.sin(t/1300+a*2+ph)+lvl*.15,sh=Math.sin(a*6+ph*.6+Math.sin(t/1700)*.6),pk=Math.sign(sh)*Math.pow(Math.abs(sh),.8+.3*Math.sin(t/1100)),rr=R*(2+.5*pk*m),px=cx+rr*Math.cos(a+rot),py=cy+rr*Math.sin(a+rot);i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath();ctx.stroke()});
  ctx.shadowBlur=8;ctx.strokeStyle="rgba(0,229,255,0.75)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R*3,t*.00005,t*.00005+Math.PI*1.94);ctx.stroke();
  ctx.lineWidth=8;ctx.strokeStyle="rgba(0,229,255,0.85)";const mr=t*.00022;[[0,.9],[1,1.08],[1.18,1.25],[1.4,2.3],[2.4,2.5],[2.62,3.5],[3.65,3.72],[3.85,4.9],[5.05,5.2],[5.35,6.1]].forEach(([a,b])=>{ctx.beginPath();ctx.arc(cx,cy,R*3.3,a+mr,b+mr);ctx.stroke()});
  const orr=-t*.00022;ctx.lineWidth=2;ctx.strokeStyle="rgba(0,229,255,0.65)";ctx.beginPath();ctx.arc(cx,cy,R*3.8,0,7);ctx.stroke();ctx.lineWidth=9;for(let k=0;k<4;k++){const a=orr+k*Math.PI/2;ctx.beginPath();ctx.arc(cx,cy,R*3.8+6,a,a+.22);ctx.stroke()}
